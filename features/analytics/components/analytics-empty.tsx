@@ -7,8 +7,8 @@ export function AnalyticsEmpty() {
     <EmptyState
       icon={BarChart3}
       title="No usage yet"
-      description="Once research runs consume credits, token and spend analytics will show up here."
-      className="py-24"
+      description="Run a research chat to see credits, estimated cost, and token usage here."
+      className="py-20"
     />
   );
 }

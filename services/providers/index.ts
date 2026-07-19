@@ -132,11 +132,13 @@ export async function persistUsageLog(input: {
   cacheTokens: number;
   totalTokens: number;
   creditsSpent: number;
+  costCents?: number | null;
+  durationMs?: number | null;
   metadata?: Json;
 }) {
   const admin = createAdminClient();
 
-  const { error } = await admin.from("usage_logs").insert({
+  const payload = {
     user_id: input.userId,
     chat_id: input.chatId,
     model: input.model,
@@ -146,36 +148,56 @@ export async function persistUsageLog(input: {
     cache_tokens: input.cacheTokens,
     total_tokens: input.totalTokens,
     credits_spent: input.creditsSpent,
+    cost_cents: input.costCents ?? null,
+    duration_ms: input.durationMs ?? null,
     metadata: input.metadata ?? {},
+  };
+
+  const { error } = await admin.from("usage_logs").insert(payload);
+
+  if (!error) return;
+
+  const message = error.message?.toLowerCase() ?? "";
+  const missingColumn =
+    message.includes("duration_ms") ||
+    message.includes("cost_cents") ||
+    message.includes("cache_tokens") ||
+    message.includes("total_tokens") ||
+    message.includes("provider") ||
+    message.includes("column");
+
+  if (!missingColumn) throw error;
+
+  const { duration_ms: _duration, ...withoutDuration } = payload;
+  const { error: withoutDurationError } = await admin
+    .from("usage_logs")
+    .insert(withoutDuration);
+
+  if (!withoutDurationError) return;
+
+  const {
+    cost_cents: _cost,
+    cache_tokens: _cache,
+    total_tokens: _total,
+    provider: _provider,
+    ...legacy
+  } = withoutDuration;
+
+  const { error: legacyError } = await admin.from("usage_logs").insert({
+    ...legacy,
+    metadata: {
+      ...(typeof input.metadata === "object" &&
+      input.metadata &&
+      !Array.isArray(input.metadata)
+        ? input.metadata
+        : {}),
+      provider: input.provider,
+      cache_tokens: input.cacheTokens,
+      total_tokens: input.totalTokens,
+      cost_cents: input.costCents ?? null,
+      duration_ms: input.durationMs ?? null,
+    },
   });
 
-  if (error) {
-    if (
-      error.message?.includes("cache_tokens") ||
-      error.message?.includes("provider") ||
-      error.message?.includes("total_tokens")
-    ) {
-      const { error: fallbackError } = await admin.from("usage_logs").insert({
-        user_id: input.userId,
-        chat_id: input.chatId,
-        model: input.model,
-        input_tokens: input.inputTokens,
-        output_tokens: input.outputTokens,
-        credits_spent: input.creditsSpent,
-        metadata: {
-          ...(typeof input.metadata === "object" &&
-          input.metadata &&
-          !Array.isArray(input.metadata)
-            ? input.metadata
-            : {}),
-          provider: input.provider,
-          cache_tokens: input.cacheTokens,
-          total_tokens: input.totalTokens,
-        },
-      });
-      if (fallbackError) throw fallbackError;
-      return;
-    }
-    throw error;
-  }
+  if (legacyError) throw legacyError;
 }

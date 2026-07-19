@@ -340,6 +340,7 @@ export type Database = {
           total_tokens: number;
           credits_spent: number;
           cost_cents: number | null;
+          duration_ms: number | null;
           metadata: Json;
           created_at: string;
         };
@@ -355,6 +356,7 @@ export type Database = {
           total_tokens?: number;
           credits_spent?: number;
           cost_cents?: number | null;
+          duration_ms?: number | null;
           metadata?: Json;
           created_at?: string;
         };
@@ -370,6 +372,7 @@ export type Database = {
           total_tokens?: number;
           credits_spent?: number;
           cost_cents?: number | null;
+          duration_ms?: number | null;
           metadata?: Json;
           created_at?: string;
         };

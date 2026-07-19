@@ -9,6 +9,10 @@ import { createResearchStream } from "@/features/agent/research-agent";
 import type { ResearchUIMessage } from "@/features/agent/message-types";
 import type { GeneratedReportDraft } from "@/features/agent/tools";
 import { createInitialTimeline } from "@/features/agent/timeline";
+import {
+  calculateTokenCost,
+  costToCents,
+} from "@/features/analytics/pricing";
 import { createLLMProvider } from "@/features/providers";
 import { RESEARCH_CREDIT_COST } from "@/lib/env";
 import { createAdminClient } from "@/services/supabase/admin";
@@ -136,6 +140,8 @@ export async function POST(req: Request) {
     metadata: { chatId, model, provider: providerConfig.provider },
   });
 
+  const startedAt = Date.now();
+
   const stream = createUIMessageStream<ResearchUIMessage>({
     originalMessages: messages as ResearchUIMessage[],
     generateId,
@@ -251,6 +257,15 @@ export async function POST(req: Request) {
 
       await touchChat(chatId!, user.id);
 
+      const durationMs = Date.now() - startedAt;
+      const cost = calculateTokenCost({
+        provider: providerConfig.provider,
+        model,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        cacheTokens: usage.cacheTokens,
+      });
+
       await persistUsageLog({
         userId: user.id,
         chatId: chatId!,
@@ -261,7 +276,18 @@ export async function POST(req: Request) {
         cacheTokens: usage.cacheTokens,
         totalTokens: usage.totalTokens,
         creditsSpent: RESEARCH_CREDIT_COST,
-        metadata: { isNewChat, reportId },
+        costCents: costToCents(cost.totalCostUsd),
+        durationMs,
+        metadata: {
+          isNewChat,
+          reportId,
+          cost: {
+            input: cost.inputCostUsd,
+            output: cost.outputCostUsd,
+            cache: cost.cacheCostUsd,
+            total: cost.totalCostUsd,
+          },
+        },
       });
     },
     onError: (error) => {
