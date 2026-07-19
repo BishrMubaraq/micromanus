@@ -37,14 +37,11 @@ export default function OpenGraphImage() {
               borderRadius: 14,
               alignItems: "center",
               justifyContent: "center",
-              background:
-                "linear-gradient(145deg, #fafafa 0%, #d4d4d8 100%)",
-              color: "#09090b",
+              background: "linear-gradient(160deg, #222 0%, #111 100%)",
+              color: "#fafafa",
               fontSize: 32,
               fontWeight: 700,
               letterSpacing: -2,
-              background: "linear-gradient(160deg, #222 0%, #111 100%)",
-              color: "#fafafa",
               border: "1px solid rgba(255,255,255,0.12)",
             }}
           >

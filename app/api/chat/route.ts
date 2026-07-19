@@ -16,6 +16,10 @@ import {
 import { createLLMProvider } from "@/features/providers";
 import { RESEARCH_CREDIT_COST } from "@/lib/env";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import {
+  assertSameOrigin,
+  publicErrorMessage,
+} from "@/lib/security/request";
 import { createAdminClient } from "@/services/supabase/admin";
 import { grantCreditsWithAdmin } from "@/services/credits";
 import { createClient } from "@/services/supabase/server";
@@ -35,7 +39,7 @@ import {
   persistUsageLog,
 } from "@/services/providers";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 type ChatRequestBody = {
   messages: UIMessage[];
@@ -43,6 +47,9 @@ type ChatRequestBody = {
 };
 
 export async function POST(req: Request) {
+  const originError = assertSameOrigin(req);
+  if (originError) return originError;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -52,34 +59,33 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  const userId = user.id;
+
   const limited = enforceRateLimit({
-    key: `chat:${user.id}`,
+    key: `chat:${userId}`,
     ...RATE_LIMITS.chat,
   });
   if (limited) return limited;
 
-  const body = (await req.json()) as ChatRequestBody;
+  let body: ChatRequestBody;
+  try {
+    body = (await req.json()) as ChatRequestBody;
+  } catch {
+    return new Response("Invalid JSON", { status: 400 });
+  }
+
   const messages = body.messages ?? [];
-  const latestUser = [...messages].reverse().find((message) => message.role === "user");
+  const latestUser = [...messages]
+    .reverse()
+    .find((message) => message.role === "user");
 
   if (!latestUser) {
     return new Response("Missing user message", { status: 400 });
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("credits_balance")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const balance = profile?.credits_balance ?? 0;
-  if (balance < RESEARCH_CREDIT_COST) {
-    return new Response("Insufficient credits", { status: 402 });
-  }
-
   let providerConfig;
   try {
-    providerConfig = await getUserProviderConfig(user.id);
+    providerConfig = await getUserProviderConfig(userId);
   } catch (error) {
     console.error("Provider config error", error);
     return new Response(
@@ -104,35 +110,34 @@ export async function POST(req: Request) {
   let isNewChat = false;
 
   if (chatId) {
-    const existing = await getChat(chatId, user.id);
+    const existing = await getChat(chatId, userId);
     if (!existing) {
       return new Response("Chat not found", { status: 404 });
     }
     chatTitle = existing.title;
     if (existing.title === "Untitled research" && promptText) {
       chatTitle = titleFromPrompt(promptText);
-      await renameChat(chatId, user.id, chatTitle);
+      await renameChat(chatId, userId, chatTitle);
     }
   } else {
-    const chat = await createChat(user.id, chatTitle);
+    const chat = await createChat(userId, chatTitle);
     chatId = chat.id;
     isNewChat = true;
   }
 
-  const existingMessages = await listMessages(chatId, user.id);
+  const existingMessages = await listMessages(chatId, userId);
   const lastDb = existingMessages[existingMessages.length - 1];
   const previousUser = existingMessages
     .slice()
     .reverse()
     .find((message) => message.role === "user");
   const isRegenerate =
-    lastDb?.role === "assistant" &&
-    previousUser?.content === promptText;
+    lastDb?.role === "assistant" && previousUser?.content === promptText;
 
   if (!isRegenerate) {
     await insertMessage({
       chatId,
-      userId: user.id,
+      userId,
       role: "user",
       content: promptText,
       parts: latestUser.parts as unknown as import("@/types/database").Json,
@@ -140,166 +145,208 @@ export async function POST(req: Request) {
   }
 
   const admin = createAdminClient();
-  await grantCreditsWithAdmin(admin, {
-    userId: user.id,
-    delta: -RESEARCH_CREDIT_COST,
-    reason: "usage",
-    metadata: { chatId, model, provider: providerConfig.provider },
-  });
+  const providerId = providerConfig.provider;
 
+  // Atomic deduct — fails if balance is insufficient (no TOCTOU race).
+  try {
+    await grantCreditsWithAdmin(admin, {
+      userId,
+      delta: -RESEARCH_CREDIT_COST,
+      reason: "usage",
+      metadata: { chatId, model, provider: providerId },
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message.toLowerCase() : "";
+    if (message.includes("insufficient")) {
+      return new Response("Insufficient credits", { status: 402 });
+    }
+    console.error("Credit deduct failed", error);
+    return new Response("Unable to charge credits", { status: 500 });
+  }
+
+  let researchCompleted = false;
   const startedAt = Date.now();
+
+  async function refundCredits(reason: string) {
+    try {
+      await grantCreditsWithAdmin(admin, {
+        userId,
+        delta: RESEARCH_CREDIT_COST,
+        reason: "refund",
+        metadata: {
+          chatId,
+          model,
+          provider: providerId,
+          reason,
+        },
+      });
+    } catch (refundError) {
+      console.error("Credit refund failed", refundError);
+    }
+  }
 
   const stream = createUIMessageStream<ResearchUIMessage>({
     originalMessages: messages as ResearchUIMessage[],
     generateId,
     execute: async ({ writer }) => {
-      writer.write({
-        type: "data-chatMeta",
-        id: chatId,
-        data: { chatId: chatId!, title: chatTitle },
-      });
+      try {
+        writer.write({
+          type: "data-chatMeta",
+          id: chatId,
+          data: { chatId: chatId!, title: chatTitle },
+        });
 
-      writer.write({
-        type: "data-timeline",
-        id: `${chatId}-timeline`,
-        data: createInitialTimeline(),
-      });
+        writer.write({
+          type: "data-timeline",
+          id: `${chatId}-timeline`,
+          data: createInitialTimeline(),
+        });
 
-      const result = await createResearchStream({
-        provider: llm,
-        model,
-        messages,
-        abortSignal: req.signal,
-        onTimeline: (timeline) => {
-          writer.write({
-            type: "data-timeline",
-            id: `${chatId}-timeline`,
-            data: timeline,
-          });
-        },
-      });
+        const result = await createResearchStream({
+          provider: llm,
+          model,
+          messages,
+          abortSignal: req.signal,
+          onTimeline: (timeline) => {
+            writer.write({
+              type: "data-timeline",
+              id: `${chatId}-timeline`,
+              data: timeline,
+            });
+          },
+        });
 
-      writer.merge(
-        result.toUIMessageStream({
-          sendSources: true,
-          originalMessages: messages as ResearchUIMessage[],
-        }),
-      );
+        writer.merge(
+          result.toUIMessageStream({
+            sendSources: true,
+            originalMessages: messages as ResearchUIMessage[],
+          }),
+        );
 
-      const [text, steps, rawUsage, totalUsage] = await Promise.all([
-        result.text,
-        result.steps,
-        result.usage,
-        result.totalUsage,
-      ]);
+        const [text, steps, rawUsage, totalUsage] = await Promise.all([
+          result.text,
+          result.steps,
+          result.usage,
+          result.totalUsage,
+        ]);
 
-      const usage = llm.usage(totalUsage ?? rawUsage);
-      void llm.toolCalls({ steps });
+        const usage = llm.usage(totalUsage ?? rawUsage);
+        void llm.toolCalls({ steps });
 
-      let reportId: string | null = null;
-      let reportTitle: string | null = null;
+        let reportId: string | null = null;
+        let reportTitle: string | null = null;
 
-      for (const step of steps) {
-        for (const toolResult of step.toolResults ?? []) {
-          if (toolResult.toolName !== "generate_report") continue;
-          const draft = toolResult.output as GeneratedReportDraft;
-          const content = [
-            draft.summary,
-            "",
-            ...draft.sections.map(
-              (section) => `## ${section.heading}\n\n${section.body}`,
-            ),
-            "",
-            draft.sources.length
-              ? `## Sources\n\n${draft.sources
-                  .map((source) => `- [${source.title}](${source.url})`)
-                  .join("\n")}`
-              : "",
-          ]
-            .filter(Boolean)
-            .join("\n");
+        for (const step of steps) {
+          for (const toolResult of step.toolResults ?? []) {
+            if (toolResult.toolName !== "generate_report") continue;
+            const draft = toolResult.output as GeneratedReportDraft;
+            const content = [
+              draft.summary,
+              "",
+              ...draft.sections.map(
+                (section) => `## ${section.heading}\n\n${section.body}`,
+              ),
+              "",
+              draft.sources.length
+                ? `## Sources\n\n${draft.sources
+                    .map((source) => `- [${source.title}](${source.url})`)
+                    .join("\n")}`
+                : "",
+            ]
+              .filter(Boolean)
+              .join("\n");
 
-          const report = await createReport({
-            userId: user.id,
-            chatId: chatId!,
-            title: draft.title,
-            content,
-            metadata: {
-              sources: draft.sources,
-              summary: draft.summary,
-              sections: draft.sections,
-            },
-          });
+            const report = await createReport({
+              userId,
+              chatId: chatId!,
+              title: draft.title,
+              content,
+              metadata: {
+                sources: draft.sources,
+                summary: draft.summary,
+                sections: draft.sections,
+              },
+            });
 
-          reportId = report.id;
-          reportTitle = report.title;
+            reportId = report.id;
+            reportTitle = report.title;
 
-          writer.write({
+            writer.write({
+              type: "data-report",
+              id: report.id,
+              data: { reportId: report.id, title: report.title },
+            });
+          }
+        }
+
+        const assistantParts: ResearchUIMessage["parts"] = [
+          { type: "text", text },
+        ];
+
+        if (reportId && reportTitle) {
+          assistantParts.push({
             type: "data-report",
-            id: report.id,
-            data: { reportId: report.id, title: report.title },
+            id: reportId,
+            data: { reportId, title: reportTitle },
           });
         }
-      }
 
-      const assistantParts: ResearchUIMessage["parts"] = [
-        { type: "text", text },
-      ];
-
-      if (reportId && reportTitle) {
-        assistantParts.push({
-          type: "data-report",
-          id: reportId,
-          data: { reportId, title: reportTitle },
+        await insertMessage({
+          chatId: chatId!,
+          userId,
+          role: "assistant",
+          content: text,
+          parts: assistantParts as unknown as import("@/types/database").Json,
         });
-      }
 
-      await insertMessage({
-        chatId: chatId!,
-        userId: user.id,
-        role: "assistant",
-        content: text,
-        parts: assistantParts as unknown as import("@/types/database").Json,
-      });
+        await touchChat(chatId!, userId);
 
-      await touchChat(chatId!, user.id);
+        const durationMs = Date.now() - startedAt;
+        const cost = calculateTokenCost({
+          provider: providerId,
+          model,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          cacheTokens: usage.cacheTokens,
+        });
 
-      const durationMs = Date.now() - startedAt;
-      const cost = calculateTokenCost({
-        provider: providerConfig.provider,
-        model,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-        cacheTokens: usage.cacheTokens,
-      });
-
-      await persistUsageLog({
-        userId: user.id,
-        chatId: chatId!,
-        provider: providerConfig.provider,
-        model,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-        cacheTokens: usage.cacheTokens,
-        totalTokens: usage.totalTokens,
-        creditsSpent: RESEARCH_CREDIT_COST,
-        costCents: costToCents(cost.totalCostUsd),
-        durationMs,
-        metadata: {
-          isNewChat,
-          reportId,
-          cost: {
-            input: cost.inputCostUsd,
-            output: cost.outputCostUsd,
-            cache: cost.cacheCostUsd,
-            total: cost.totalCostUsd,
+        await persistUsageLog({
+          userId,
+          chatId: chatId!,
+          provider: providerId,
+          model,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          cacheTokens: usage.cacheTokens,
+          totalTokens: usage.totalTokens,
+          creditsSpent: RESEARCH_CREDIT_COST,
+          costCents: costToCents(cost.totalCostUsd),
+          durationMs,
+          metadata: {
+            isNewChat,
+            reportId,
+            cost: {
+              input: cost.inputCostUsd,
+              output: cost.outputCostUsd,
+              cache: cost.cacheCostUsd,
+              total: cost.totalCostUsd,
+            },
           },
-        },
-      });
+        });
+
+        researchCompleted = true;
+      } catch (error) {
+        if (!researchCompleted) {
+          const aborted = req.signal.aborted;
+          await refundCredits(aborted ? "client_abort" : "stream_error");
+        }
+        throw error;
+      }
     },
     onError: (error) => {
       console.error("Research stream error", error);
-      return error instanceof Error ? error.message : "Research failed";
+      return publicErrorMessage(error, "Research failed. Please try again.");
     },
   });
 

@@ -1,10 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/features/auth/get-session";
+import { getAppUrl } from "@/lib/app-url";
 import { ROUTES } from "@/lib/constants";
 import { isLemonConfigured } from "@/lib/billing";
 import { createPaymentService } from "@/services/payments";
@@ -29,11 +29,7 @@ export async function startCheckout(): Promise<CheckoutActionResult> {
     return { error: "Lemon Squeezy is not configured" };
   }
 
-  const headerStore = await headers();
-  const origin =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    headerStore.get("origin") ??
-    "http://localhost:3000";
+  const origin = getAppUrl();
 
   try {
     const payments = createPaymentService();

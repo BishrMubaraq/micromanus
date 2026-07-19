@@ -3,6 +3,7 @@ import { createElement } from "react";
 
 import { ResearchReportDocument } from "@/features/reports/research-report-document";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { safeContentDispositionFilename } from "@/lib/security/urls";
 import { getReport } from "@/services/chats";
 import { createClient } from "@/services/supabase/server";
 
@@ -40,21 +41,16 @@ export async function GET(_req: Request, context: RouteContext) {
     }),
   );
 
+  const filename = `${safeContentDispositionFilename(
+    report.title.toLowerCase(),
+    "micromanus-report",
+  )}.pdf`;
+
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${slugify(report.title)}.pdf"`,
+      "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "private, no-store",
     },
   });
-}
-
-function slugify(value: string) {
-  return (
-    value
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "")
-      .slice(0, 64) || "micromanus-report"
-  );
 }

@@ -3,7 +3,6 @@ import { z } from "zod";
 import { RESEARCH_CREDIT_COST } from "@/lib/billing";
 
 export { RESEARCH_CREDIT_COST };
-export const WELCOME_CREDITS = 100;
 
 const publicEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
@@ -50,7 +49,12 @@ function readServerEnv() {
 /** Validated public env accessors. Throws on malformed values. */
 export const env = {
   get appUrl() {
-    return readPublicEnv().NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const configured = readPublicEnv().NEXT_PUBLIC_APP_URL;
+    if (configured) return configured;
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("NEXT_PUBLIC_APP_URL is required in production");
+    }
+    return "http://localhost:3000";
   },
   get supabaseUrl() {
     return readPublicEnv().NEXT_PUBLIC_SUPABASE_URL;

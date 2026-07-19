@@ -37,7 +37,6 @@ export async function createLemonCheckout(input: {
             email: input.email ?? undefined,
             custom: {
               user_id: input.userId,
-              credits: String(BILLING_CREDITS_PER_PURCHASE),
             },
           },
           product_options: {

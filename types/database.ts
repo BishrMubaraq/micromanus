@@ -461,6 +461,17 @@ export type Database = {
         };
         Returns: number;
       };
+      fulfill_lemon_order: {
+        Args: {
+          p_order_id: string;
+          p_user_id: string;
+          p_amount_cents: number;
+          p_currency: string;
+          p_credits: number;
+          p_metadata?: Json;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       chat_status: ChatStatus;

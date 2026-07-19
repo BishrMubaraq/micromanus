@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/features/auth/get-session";
 import { providerSettingsSchema } from "@/features/providers/validations";
+import { assertSafeProviderEndpoint } from "@/lib/security/urls";
 import { upsertUserProvider } from "@/services/providers";
 
 export type ProviderFormState = {
@@ -35,10 +36,14 @@ export async function saveProviderSettings(
   }
 
   try {
+    const endpoint = assertSafeProviderEndpoint(
+      parsed.data.provider,
+      parsed.data.endpoint,
+    );
     await upsertUserProvider({
       userId: session.user.id,
       provider: parsed.data.provider,
-      endpoint: parsed.data.endpoint,
+      endpoint,
       defaultModel: parsed.data.defaultModel,
       apiKey: parsed.data.apiKey,
     });

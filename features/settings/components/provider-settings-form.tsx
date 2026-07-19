@@ -99,10 +99,10 @@ export function ProviderSettingsForm({ initial }: ProviderSettingsFormProps) {
         />
         <p className="text-xs text-muted-foreground">
           {provider === "kimi"
-            ? "Moonshot / Kimi OpenAI-compatible base URL."
+            ? "Must be api.moonshot.ai or api.moonshot.cn (HTTPS)."
             : provider === "openai"
-              ? "OpenAI API base (Chat Completions)."
-              : "Anthropic API base URL."}
+              ? "Must be api.openai.com (HTTPS)."
+              : "Must be api.anthropic.com (HTTPS)."}
         </p>
       </div>
 
@@ -121,7 +121,8 @@ export function ProviderSettingsForm({ initial }: ProviderSettingsFormProps) {
           className="h-10 border-border bg-background/60 font-mono text-xs"
         />
         <p className="text-xs text-muted-foreground">
-          Stored encrypted in Supabase. Leave blank to keep the existing key.
+          Your key is encrypted and stored securely. Leave blank to keep your
+          existing key.
         </p>
       </div>
 

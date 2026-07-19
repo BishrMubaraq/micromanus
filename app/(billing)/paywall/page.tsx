@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 type PaywallPageProps = {
-  searchParams: Promise<{ checkout?: string }>;
+  searchParams: Promise<{ checkout?: string; from?: string }>;
 };
 
 export default async function PaywallPage({ searchParams }: PaywallPageProps) {
@@ -24,6 +24,7 @@ export default async function PaywallPage({ searchParams }: PaywallPageProps) {
   }
 
   const params = await searchParams;
+  const from = params.from === "settings" ? "settings" : null;
   const supabase = await createClient();
   const { data: payments } = await supabase
     .from("payments")
@@ -40,6 +41,7 @@ export default async function PaywallPage({ searchParams }: PaywallPageProps) {
       creditsBalance={session.profile?.credits_balance ?? 0}
       lemonConfigured={isLemonConfigured()}
       checkoutSuccess={params.checkout === "success"}
+      from={from}
       payments={payments ?? []}
       onSignOut={signOut}
     />

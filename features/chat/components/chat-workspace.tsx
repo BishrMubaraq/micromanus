@@ -71,17 +71,29 @@ export function ChatWorkspace({
   const router = useRouter();
   const [input, setInput] = useState("");
   const [chatId, setChatId] = useState(initialChatId);
+  const chatIdRef = useRef(initialChatId);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
+
+  chatIdRef.current = chatId;
 
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        body: { chatId },
+        prepareSendMessagesRequest: ({ messages, body, headers, credentials, api }) => ({
+          api,
+          headers,
+          credentials,
+          body: {
+            ...body,
+            messages,
+            chatId: chatIdRef.current,
+          },
+        }),
       }),
-    [chatId],
+    [],
   );
 
   const { messages, sendMessage, status, stop, regenerate, error } =
@@ -93,7 +105,11 @@ export function ChatWorkspace({
         if (dataPart.type === "data-chatMeta") {
           const nextId = dataPart.data.chatId;
           if (!nextId) return;
-          setChatId((current) => current ?? nextId);
+          setChatId((current) => {
+            if (current) return current;
+            chatIdRef.current = nextId;
+            return nextId;
+          });
         }
       },
       onFinish: () => {

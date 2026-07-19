@@ -1,5 +1,6 @@
+import Link from "next/link";
+
 import { signOut } from "@/features/auth/actions";
-import { grantTestCredits } from "@/features/auth/grant-test-credits";
 import { ProviderSettingsForm } from "@/features/settings/components/provider-settings-form";
 import type { UserProviderPublic } from "@/features/providers";
 import { Button } from "@/components/ui/button";
@@ -11,8 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { APP_NAME } from "@/lib/constants";
-import { WELCOME_CREDITS } from "@/lib/env";
+import { APP_NAME, ROUTES } from "@/lib/constants";
 
 type SettingsPanelProps = {
   email: string | null;
@@ -40,8 +40,8 @@ export function SettingsPanel({
         <CardHeader>
           <CardTitle className="text-base font-medium">Model provider</CardTitle>
           <CardDescription>
-            BYOK for OpenAI, Anthropic, or Kimi. {APP_NAME} never ships vendor
-            keys — yours stay encrypted at rest.
+            Bring your own OpenAI, Anthropic, or Kimi key. Keys are encrypted at
+            rest and never exposed to the browser.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -53,7 +53,7 @@ export function SettingsPanel({
         <CardHeader>
           <CardTitle className="text-base font-medium">Profile</CardTitle>
           <CardDescription>
-            Synced from your auth provider. OAuth providers will be enabled next.
+            Synced from your GitHub account.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
@@ -69,31 +69,19 @@ export function SettingsPanel({
           <Separator />
           <div className="flex items-center justify-between gap-4">
             <span className="text-muted-foreground">Credits</span>
-            <span className="font-medium tabular-nums">
-              {creditsBalance.toLocaleString()}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="font-medium tabular-nums">
+                {creditsBalance.toLocaleString()}
+              </span>
+              <Button asChild size="sm" variant="outline">
+                <Link href={`${ROUTES.paywall}?from=settings`}>
+                  Add credits
+                </Link>
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
-
-      {process.env.NODE_ENV !== "production" ? (
-        <Card className="border-border bg-card/50 shadow-none">
-          <CardHeader>
-            <CardTitle className="text-base font-medium">Test credits</CardTitle>
-            <CardDescription>
-              Development helper. Adds {WELCOME_CREDITS} credits for research
-              runs. Hidden in production — use Billing instead.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form action={grantTestCredits}>
-              <Button type="submit" variant="outline">
-                Add {WELCOME_CREDITS} test credits
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      ) : null}
 
       <Card className="border-border bg-card/50 shadow-none">
         <CardHeader>

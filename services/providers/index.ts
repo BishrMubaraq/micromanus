@@ -9,6 +9,7 @@ import {
   type UserProviderConfig,
   type UserProviderPublic,
 } from "@/features/providers/types";
+import { assertSafeProviderEndpoint } from "@/lib/security/urls";
 import { createAdminClient } from "@/services/supabase/admin";
 import { createClient } from "@/services/supabase/server";
 import type { Json, UserProvider } from "@/types/database";
@@ -54,7 +55,7 @@ export async function getUserProviderConfig(
 
   return {
     provider,
-    endpoint: row.endpoint,
+    endpoint: assertSafeProviderEndpoint(provider, row.endpoint),
     apiKey,
     defaultModel: row.default_model,
   };
@@ -70,7 +71,10 @@ export async function upsertUserProvider(input: {
   const supabase = await createClient();
   const existing = await getUserProviderRow(input.userId);
 
-  const endpoint = input.endpoint.trim() || getDefaultEndpoint(input.provider);
+  const endpoint = assertSafeProviderEndpoint(
+    input.provider,
+    input.endpoint.trim() || getDefaultEndpoint(input.provider),
+  );
   const defaultModel = resolveModelId(input.provider, input.defaultModel);
 
   const apiKey = input.apiKey?.trim();

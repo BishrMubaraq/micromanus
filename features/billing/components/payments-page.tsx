@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight, Check, LoaderCircle, Ticket } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, LoaderCircle, Ticket } from "lucide-react";
 import { toast } from "sonner";
 
 import { BrandMark } from "@/components/shared/brand-mark";
@@ -21,7 +22,7 @@ import {
   BILLING_CREDITS_PER_PURCHASE,
   LAUNCH_COUPON_CODE,
 } from "@/lib/billing";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, ROUTES } from "@/lib/constants";
 import { fadeUp, usePrefersReducedMotion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +46,7 @@ type PaymentsPageProps = {
   creditsBalance: number;
   lemonConfigured: boolean;
   checkoutSuccess?: boolean;
+  from?: "settings" | null;
   payments: PaymentHistoryItem[];
   onSignOut: () => void;
 };
@@ -54,9 +56,11 @@ export function PaymentsPage({
   creditsBalance,
   lemonConfigured,
   checkoutSuccess,
+  from = null,
   payments,
   onSignOut,
 }: PaymentsPageProps) {
+  const showBackToSettings = from === "settings";
   const router = useRouter();
   const [checkoutPending, startCheckoutTransition] = useTransition();
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -105,9 +109,19 @@ export function PaymentsPage({
       />
 
       <header className="relative z-10 flex h-14 items-center justify-between border-b border-border px-6">
-        <div className="flex items-center gap-2.5">
-          <BrandMark size="sm" />
-          <p className="text-sm font-semibold tracking-tight">{APP_NAME}</p>
+        <div className="flex items-center gap-3">
+          {showBackToSettings ? (
+            <Button asChild type="button" variant="ghost" size="sm" className="-ml-2">
+              <Link href={ROUTES.settings}>
+                <ArrowLeft className="size-4" />
+                Back
+              </Link>
+            </Button>
+          ) : null}
+          <div className="flex items-center gap-2.5">
+            <BrandMark size="sm" />
+            <p className="text-sm font-semibold tracking-tight">{APP_NAME}</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden text-xs text-muted-foreground sm:inline">
@@ -213,7 +227,8 @@ export function PaymentsPage({
           </Button>
           {!lemonConfigured ? (
             <p className="mt-3 text-xs text-muted-foreground">
-              Lemon Squeezy env vars are not configured yet.
+              Checkout is temporarily unavailable. Please try again later or
+              redeem a coupon.
             </p>
           ) : null}
           {checkoutError ? (

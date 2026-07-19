@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 
+import { sanitizeHref } from "@/lib/security/urls";
 import { cn } from "@/lib/utils";
 
 import "highlight.js/styles/github-dark.css";
@@ -45,16 +46,22 @@ export function MarkdownMessage({ content, className }: MarkdownMessageProps) {
               {children}
             </ol>
           ),
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noreferrer"
-              className="underline underline-offset-4 hover:text-foreground"
-            >
-              {children}
-            </a>
-          ),
+          a: ({ href, children }) => {
+            const safeHref = sanitizeHref(href);
+            if (!safeHref) {
+              return <span className="underline underline-offset-4">{children}</span>;
+            }
+            return (
+              <a
+                href={safeHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-4 hover:text-foreground"
+              >
+                {children}
+              </a>
+            );
+          },
           code: ({ className: codeClassName, children, ...props }) => {
             const isBlock = Boolean(codeClassName);
             if (!isBlock) {
