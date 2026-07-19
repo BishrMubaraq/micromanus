@@ -43,9 +43,7 @@ export function LandingPage() {
           {...fadeUp(reduced, 0.12)}
           className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg"
         >
-          A premium AI research workspace with the sharpness of Linear and
-          Vercel. Plan, investigate, and ship grounded answers — with your own
-          keys.
+          An AI research workspace that explores the web, synthesizes trusted information, and generates professional reports—all powered by your own AI providers.
         </motion.p>
 
         <motion.div
