@@ -1,6 +1,5 @@
-import {
-  BILLING_CREDITS_PER_PURCHASE,
-} from "@/lib/billing";
+import { BILLING_CREDITS_PER_PURCHASE } from "@/lib/billing";
+import { APP_NAME } from "@/lib/constants";
 
 export type PricingPlan = {
   id: "credits";
@@ -13,6 +12,6 @@ export type PricingPlan = {
 export const CREDIT_PACK: PricingPlan = {
   id: "credits",
   name: "Research credits",
-  description: "Credits for deep research requests.",
+  description: `${BILLING_CREDITS_PER_PURCHASE} credits for ${APP_NAME} deep research.`,
   credits: BILLING_CREDITS_PER_PURCHASE,
 };

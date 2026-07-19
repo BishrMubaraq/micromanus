@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +32,9 @@ type ProviderSettingsFormProps = {
 
 export function ProviderSettingsForm({ initial }: ProviderSettingsFormProps) {
   const [provider, setProvider] = useState<ProviderId>(
-    initial?.provider ?? "openai",
+    initial?.provider && PROVIDER_IDS.includes(initial.provider)
+      ? initial.provider
+      : "openai",
   );
   const [endpoint, setEndpoint] = useState(
     initial?.endpoint ?? DEFAULT_ENDPOINTS.openai,
@@ -48,6 +51,11 @@ export function ProviderSettingsForm({ initial }: ProviderSettingsFormProps) {
   const selectedModel = models.some((model) => model.id === defaultModel)
     ? defaultModel
     : (models[0]?.id ?? "");
+
+  useEffect(() => {
+    if (state.success) toast.success("Provider settings saved");
+    if (state.error) toast.error(state.error);
+  }, [state.error, state.success]);
 
   function handleProviderChange(next: ProviderId) {
     setProvider(next);
@@ -74,6 +82,9 @@ export function ProviderSettingsForm({ initial }: ProviderSettingsFormProps) {
             </option>
           ))}
         </select>
+        <p className="text-xs text-muted-foreground">
+          Bring your own key for OpenAI, Anthropic, or Kimi.
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -87,7 +98,11 @@ export function ProviderSettingsForm({ initial }: ProviderSettingsFormProps) {
           className="h-10 border-border bg-background/60 font-mono text-xs"
         />
         <p className="text-xs text-muted-foreground">
-          OpenAI-compatible base URL supported for OpenAI and Kimi.
+          {provider === "kimi"
+            ? "Moonshot / Kimi OpenAI-compatible base URL."
+            : provider === "openai"
+              ? "OpenAI API base (Chat Completions)."
+              : "Anthropic API base URL."}
         </p>
       </div>
 
@@ -107,7 +122,6 @@ export function ProviderSettingsForm({ initial }: ProviderSettingsFormProps) {
         />
         <p className="text-xs text-muted-foreground">
           Stored encrypted in Supabase. Leave blank to keep the existing key.
-          Keys are never returned to the browser.
         </p>
       </div>
 
@@ -129,10 +143,9 @@ export function ProviderSettingsForm({ initial }: ProviderSettingsFormProps) {
       </div>
 
       {state.error ? (
-        <p className="text-sm text-destructive">{state.error}</p>
-      ) : null}
-      {state.success ? (
-        <p className="text-sm text-muted-foreground">Provider settings saved.</p>
+        <p role="alert" className="text-sm text-destructive">
+          {state.error}
+        </p>
       ) : null}
 
       <Button type="submit" disabled={pending}>

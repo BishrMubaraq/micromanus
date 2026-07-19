@@ -1,5 +1,5 @@
 import { generateReportTool } from "./generate-report";
-import { webSearchTool } from "./brave-search";
+import { webSearchTool } from "./serp-search";
 
 export const researchTools = {
   web_search: webSearchTool,
@@ -8,7 +8,7 @@ export const researchTools = {
 
 export type ResearchTools = typeof researchTools;
 
-export { searchBraveWeb, webSearchTool } from "./brave-search";
+export { searchSerpApiWeb, webSearchTool } from "./serp-search";
 export { generateReportTool } from "./generate-report";
-export type { BraveSearchResponse, BraveSearchResult } from "./brave-search";
+export type { WebSearchResponse, WebSearchResult } from "./serp-search";
 export type { GeneratedReportDraft } from "./generate-report";

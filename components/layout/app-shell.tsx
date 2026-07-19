@@ -66,7 +66,9 @@ export function AppShell({
           user={user}
           onOpenMobileNav={() => setMobileOpen(true)}
         />
-        <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
+        <main id="main-content" className="min-h-0 flex-1 overflow-hidden">
+          {children}
+        </main>
       </div>
     </div>
   );

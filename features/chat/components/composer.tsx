@@ -41,12 +41,17 @@ export function Composer({
           "mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border border-border bg-card/50 p-2 shadow-sm",
         )}
       >
+        <label htmlFor="research-composer" className="sr-only">
+          Research prompt
+        </label>
         <textarea
+          id="research-composer"
           ref={ref}
           value={value}
           disabled={disabled || isStreaming}
           rows={1}
           placeholder={placeholder}
+          aria-label="Research prompt"
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
@@ -81,7 +86,7 @@ export function Composer({
         )}
       </div>
       <p className="mx-auto mt-2 max-w-3xl px-1 text-[11px] text-muted-foreground">
-        Enter to send · Shift+Enter for newline · Real streaming research only
+        Enter to send · Shift+Enter for newline · ⌘K to navigate
       </p>
     </div>
   );

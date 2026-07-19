@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { APP_NAME } from "@/lib/constants";
 import { WELCOME_CREDITS } from "@/lib/env";
 
 type SettingsPanelProps = {
@@ -27,7 +28,7 @@ export function SettingsPanel({
   provider,
 }: SettingsPanelProps) {
   return (
-    <div className="mx-auto max-w-2xl space-y-6 overflow-y-auto p-6 md:p-8">
+    <div className="mx-auto max-w-2xl space-y-6 overflow-y-auto p-6 md:p-8 h-[calc(100vh-10rem)]">
       <div>
         <h1 className="text-xl font-medium tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -39,8 +40,8 @@ export function SettingsPanel({
         <CardHeader>
           <CardTitle className="text-base font-medium">Model provider</CardTitle>
           <CardDescription>
-            Bring your own key. MicroManus never ships or exposes provider
-            secrets — keys are encrypted at rest.
+            BYOK for OpenAI, Anthropic, or Kimi. {APP_NAME} never ships vendor
+            keys — yours stay encrypted at rest.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -68,34 +69,38 @@ export function SettingsPanel({
           <Separator />
           <div className="flex items-center justify-between gap-4">
             <span className="text-muted-foreground">Credits</span>
-            <span className="font-medium">
+            <span className="font-medium tabular-nums">
               {creditsBalance.toLocaleString()}
             </span>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="border-border bg-card/50 shadow-none">
-        <CardHeader>
-          <CardTitle className="text-base font-medium">Test credits</CardTitle>
-          <CardDescription>
-            Interim grant while Stripe checkout is offline. Adds {WELCOME_CREDITS}{" "}
-            credits for research runs.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={grantTestCredits}>
-            <Button type="submit" variant="outline">
-              Add {WELCOME_CREDITS} test credits
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      {process.env.NODE_ENV !== "production" ? (
+        <Card className="border-border bg-card/50 shadow-none">
+          <CardHeader>
+            <CardTitle className="text-base font-medium">Test credits</CardTitle>
+            <CardDescription>
+              Development helper. Adds {WELCOME_CREDITS} credits for research
+              runs. Hidden in production — use Billing instead.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={grantTestCredits}>
+              <Button type="submit" variant="outline">
+                Add {WELCOME_CREDITS} test credits
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="border-border bg-card/50 shadow-none">
         <CardHeader>
           <CardTitle className="text-base font-medium">Session</CardTitle>
-          <CardDescription>Sign out of MicroManus on this device.</CardDescription>
+          <CardDescription>
+            Sign out of {APP_NAME} on this device.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form action={signOut}>

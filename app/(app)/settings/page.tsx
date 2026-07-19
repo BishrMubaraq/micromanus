@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { getSession } from "@/features/auth/get-session";
 import { SettingsPanel } from "@/features/settings/components/settings-panel";
-import { ROUTES } from "@/lib/constants";
+import { APP_NAME, ROUTES } from "@/lib/constants";
 import { getUserProviderPublic } from "@/services/providers";
+
+export const metadata: Metadata = {
+  title: "Settings",
+  description: `Manage your ${APP_NAME} provider, profile, and session.`,
+};
 
 export default async function SettingsPage() {
   const session = await getSession();

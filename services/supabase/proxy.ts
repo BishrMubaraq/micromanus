@@ -1,23 +1,23 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { ROUTES } from "@/lib/constants";
+import {
+  isAuthenticatedRoute,
+  isProtectedRoute,
+  ROUTES,
+} from "@/lib/constants";
 import type { Database } from "@/types/database";
 
 import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseConfig } from "./env";
 
 /** App routes that require auth + credits > 0 */
 function isCreditGatedPath(pathname: string): boolean {
-  return (
-    pathname.startsWith(ROUTES.chat) ||
-    pathname.startsWith(ROUTES.analytics) ||
-    pathname.startsWith(ROUTES.settings)
-  );
+  return isProtectedRoute(pathname);
 }
 
 /** Routes that require a session (credits optional) */
 function isAuthenticatedPath(pathname: string): boolean {
-  return isCreditGatedPath(pathname) || pathname.startsWith(ROUTES.paywall);
+  return isAuthenticatedRoute(pathname);
 }
 
 function copyCookies(from: NextResponse, to: NextResponse) {

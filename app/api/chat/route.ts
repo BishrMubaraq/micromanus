@@ -15,6 +15,7 @@ import {
 } from "@/features/analytics/pricing";
 import { createLLMProvider } from "@/features/providers";
 import { RESEARCH_CREDIT_COST } from "@/lib/env";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { createAdminClient } from "@/services/supabase/admin";
 import { grantCreditsWithAdmin } from "@/services/credits";
 import { createClient } from "@/services/supabase/server";
@@ -50,6 +51,12 @@ export async function POST(req: Request) {
   if (!user) {
     return new Response("Unauthorized", { status: 401 });
   }
+
+  const limited = enforceRateLimit({
+    key: `chat:${user.id}`,
+    ...RATE_LIMITS.chat,
+  });
+  if (limited) return limited;
 
   const body = (await req.json()) as ChatRequestBody;
   const messages = body.messages ?? [];

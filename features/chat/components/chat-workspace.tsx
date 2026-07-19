@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
@@ -8,15 +9,27 @@ import { Compass } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { Composer } from "@/features/chat/components/composer";
-import { MarkdownMessage } from "@/features/chat/components/markdown-message";
 import { MessageActions } from "@/features/chat/components/message-actions";
 import { ReportCard } from "@/features/chat/components/report-card";
 import { ResearchTimeline } from "@/features/chat/components/research-timeline";
 import type { ResearchUIMessage } from "@/features/agent/message-types";
 import type { ResearchTimelineState } from "@/features/agent/timeline";
 import { createInitialTimeline } from "@/features/agent/timeline";
-import { ROUTES } from "@/lib/constants";
+import { APP_NAME, ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+
+const MarkdownMessage = dynamic(
+  () =>
+    import("@/features/chat/components/markdown-message").then(
+      (mod) => mod.MarkdownMessage,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-20 animate-pulse rounded-lg bg-muted/40" aria-hidden />
+    ),
+  },
+);
 
 type ChatWorkspaceProps = {
   chatId?: string;
@@ -79,13 +92,8 @@ export function ChatWorkspace({
       onData: (dataPart) => {
         if (dataPart.type === "data-chatMeta") {
           const nextId = dataPart.data.chatId;
-          setChatId((current) => {
-            if (!current && nextId) {
-              window.history.replaceState(null, "", `${ROUTES.chat}/${nextId}`);
-              return nextId;
-            }
-            return current;
-          });
+          if (!nextId) return;
+          setChatId((current) => current ?? nextId);
         }
       },
       onFinish: () => {
@@ -95,6 +103,12 @@ export function ChatWorkspace({
 
   const isStreaming = status === "submitted" || status === "streaming";
   const timeline = extractTimeline(messages) ?? (isStreaming ? createInitialTimeline() : null);
+
+  useEffect(() => {
+    if (!chatId || initialChatId) return;
+    if (window.location.pathname !== ROUTES.chat) return;
+    window.history.replaceState(null, "", `${ROUTES.chat}/${chatId}`);
+  }, [chatId, initialChatId]);
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -140,11 +154,16 @@ export function ChatWorkspace({
             <EmptyState
               icon={Compass}
               title="What should we investigate?"
-              description="Ask a complex question. MicroManus will plan, search the web, compare sources, and stream a grounded answer."
+              description={`Ask a complex question. ${APP_NAME} will plan, search the web, compare sources, and stream a grounded answer.`}
               className="py-16"
             />
           ) : null}
 
+          <div
+            aria-live="polite"
+            aria-relevant="additions text"
+            className="flex flex-col gap-6"
+          >
           {messages.map((message, index) => {
             const text = extractText(message);
             const reports = extractReports(message);
@@ -163,7 +182,7 @@ export function ChatWorkspace({
                 )}
               >
                 <p className="mb-3 text-[11px] tracking-[0.14em] text-muted-foreground uppercase">
-                  {message.role === "user" ? "You" : "MicroManus"}
+                  {message.role === "user" ? "You" : APP_NAME}
                 </p>
 
                 {message.role === "assistant" && isLastAssistant && timeline ? (
@@ -212,10 +231,14 @@ export function ChatWorkspace({
           })}
 
           {error ? (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <div
+              role="alert"
+              className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            >
               {error.message}
             </div>
           ) : null}
+          </div>
 
           <div ref={bottomRef} />
         </div>

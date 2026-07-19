@@ -3,26 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
   MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
-  Settings,
 } from "lucide-react";
 
+import { BrandMark } from "@/components/shared/brand-mark";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { APP_NAME, ROUTES } from "@/lib/constants";
+import { SIDEBAR_NAV } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import type { Chat } from "@/types/database";
-
-const NAV = [
-  { href: ROUTES.chat, label: "New Chat", icon: Plus, exact: true },
-  { href: ROUTES.analytics, label: "Analytics", icon: BarChart3 },
-  { href: ROUTES.settings, label: "Settings", icon: Settings },
-] as const;
 
 type SidebarProps = {
   collapsed: boolean;
@@ -42,7 +41,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200",
+        "flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-out",
         collapsed ? "w-[68px]" : "w-64",
         className,
       )}
@@ -56,54 +55,80 @@ export function Sidebar({
         {!collapsed ? (
           <Link
             href={ROUTES.chat}
-            className="truncate text-sm font-semibold tracking-tight"
+            className="flex min-w-0 items-center gap-2.5"
           >
-            {APP_NAME}
+            <BrandMark size="sm" />
+            <span className="truncate text-sm font-semibold tracking-tight">
+              {APP_NAME}
+            </span>
           </Link>
-        ) : null}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          onClick={onToggle}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? (
-            <PanelLeftOpen className="size-4" />
-          ) : (
+        ) : (
+          <Link href={ROUTES.chat} aria-label={APP_NAME}>
+            <BrandMark size="sm" />
+          </Link>
+        )}
+        {!collapsed ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={onToggle}
+            aria-label="Collapse sidebar"
+          >
             <PanelLeftClose className="size-4" />
-          )}
-        </Button>
+          </Button>
+        ) : null}
       </div>
 
+      {collapsed ? (
+        <div className="flex justify-center px-2 pb-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={onToggle}
+            aria-label="Expand sidebar"
+          >
+            <PanelLeftOpen className="size-4" />
+          </Button>
+        </div>
+      ) : null}
+
       <div className="px-2 pb-3">
-        <Button
-          asChild
-          variant="outline"
-          className={cn(
-            "w-full justify-start border-sidebar-border bg-transparent",
-            collapsed && "justify-center px-0",
-          )}
-        >
-          <Link href={ROUTES.chat}>
-            <Plus className="size-4" />
-            {!collapsed ? <span>New Chat</span> : null}
-          </Link>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              asChild
+              variant="outline"
+              className={cn(
+                "w-full justify-start border-sidebar-border bg-transparent",
+                collapsed && "justify-center px-0",
+              )}
+            >
+              <Link href={ROUTES.chat} aria-label="New research">
+                <Plus className="size-4" />
+                {!collapsed ? <span>New research</span> : null}
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          {collapsed ? <TooltipContent side="right">New research</TooltipContent> : null}
+        </Tooltip>
       </div>
 
       <Separator className="bg-sidebar-border" />
 
-      <nav className="flex flex-col gap-1 p-2">
-        {NAV.map((item) => {
-          const active =
-            "exact" in item && item.exact
-              ? pathname === item.href
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
-          return (
+      <nav className="flex flex-col gap-1 p-2" aria-label="Primary">
+        {SIDEBAR_NAV.map((item) => {
+          const active = item.exact
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+          const link = (
             <Link
-              key={item.href + item.label}
+              key={item.href}
               href={item.href}
+              aria-label={item.label}
+              aria-current={active ? "page" : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-md px-2.5 py-2 text-sm transition-colors",
                 active
@@ -116,6 +141,15 @@ export function Sidebar({
               {!collapsed ? <span>{item.label}</span> : null}
             </Link>
           );
+
+          if (!collapsed) return link;
+
+          return (
+            <Tooltip key={item.href}>
+              <TooltipTrigger asChild>{link}</TooltipTrigger>
+              <TooltipContent side="right">{item.label}</TooltipContent>
+            </Tooltip>
+          );
         })}
       </nav>
 
@@ -123,7 +157,7 @@ export function Sidebar({
 
       <div className="flex min-h-0 flex-1 flex-col px-2 py-3">
         {!collapsed ? (
-          <p className="mb-2 flex items-center gap-2 px-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="mb-2 flex items-center gap-2 px-2 text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
             <MessageSquare className="size-3" />
             Chat History
           </p>
@@ -138,21 +172,41 @@ export function Sidebar({
             {chats.map((chat) => {
               const href = `${ROUTES.chat}/${chat.id}`;
               const active = pathname === href;
-              return (
+              const link = (
                 <Link
                   key={chat.id}
                   href={href}
                   title={chat.title}
+                  aria-label={chat.title}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
                     "block truncate rounded-md px-2.5 py-2 text-sm transition-colors",
                     active
                       ? "bg-sidebar-accent text-sidebar-accent-foreground"
                       : "text-muted-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
-                    collapsed && "px-0 text-center",
+                    collapsed && "flex items-center justify-center px-0",
                   )}
                 >
-                  {collapsed ? "•" : chat.title}
+                  {collapsed ? (
+                    <span
+                      aria-hidden
+                      className="size-1.5 rounded-full bg-current opacity-70"
+                    />
+                  ) : (
+                    chat.title
+                  )}
                 </Link>
+              );
+
+              if (!collapsed) return link;
+
+              return (
+                <Tooltip key={chat.id}>
+                  <TooltipTrigger asChild>{link}</TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-[220px]">
+                    {chat.title}
+                  </TooltipContent>
+                </Tooltip>
               );
             })}
           </div>

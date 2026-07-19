@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { signOut } from "@/features/auth/actions";
 import { useCommandMenu } from "@/features/providers/command-menu-provider";
-import { ROUTES } from "@/lib/constants";
+import { APP_INITIALS, ROUTES } from "@/lib/constants";
 
 type HeaderProps = {
   title?: string;
@@ -44,7 +44,7 @@ export function Header({
       .slice(0, 2)
       .toUpperCase() ||
     user.email?.slice(0, 2).toUpperCase() ||
-    "MM";
+    APP_INITIALS;
 
   return (
     <header className="flex h-14 items-center gap-3 border-b border-border px-4 md:px-6">
@@ -73,6 +73,7 @@ export function Header({
         size="sm"
         className="hidden h-8 gap-2 border-border bg-transparent text-muted-foreground sm:inline-flex"
         onClick={() => setOpen(true)}
+        aria-label="Open command menu"
       >
         <Search className="size-3.5" />
         <span>Search</span>
@@ -81,12 +82,24 @@ export function Header({
         </kbd>
       </Button>
 
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="sm:hidden"
+        onClick={() => setOpen(true)}
+        aria-label="Open command menu"
+      >
+        <Search className="size-4" />
+      </Button>
+
       <Badge
         variant="outline"
         className="h-8 rounded-md border-border bg-transparent px-2.5 font-normal text-muted-foreground"
       >
         <CreditCard className="size-3.5" />
-        {creditsBalance.toLocaleString()} credits
+        <span className="tabular-nums">{creditsBalance.toLocaleString()}</span>
+        <span className="hidden sm:inline">credits</span>
       </Badge>
 
       <DropdownMenu>
@@ -96,10 +109,14 @@ export function Header({
             variant="ghost"
             size="icon-sm"
             className="rounded-full"
+            aria-label="Open account menu"
           >
             <Avatar className="size-7">
               {user.avatarUrl ? (
-                <AvatarImage src={user.avatarUrl} alt={user.fullName ?? "User"} />
+                <AvatarImage
+                  src={user.avatarUrl}
+                  alt={user.fullName ?? "User"}
+                />
               ) : null}
               <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
             </Avatar>
@@ -124,7 +141,7 @@ export function Header({
           <DropdownMenuItem asChild>
             <Link href={ROUTES.paywall}>
               <CreditCard className="size-4" />
-              Payments
+              Billing
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />

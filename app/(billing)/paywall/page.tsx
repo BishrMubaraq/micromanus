@@ -1,11 +1,17 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { signOut } from "@/features/auth/actions";
 import { getSession } from "@/features/auth/get-session";
 import { PaymentsPage } from "@/features/billing/components/payments-page";
-import { ROUTES } from "@/lib/constants";
+import { APP_NAME, ROUTES } from "@/lib/constants";
 import { isLemonConfigured } from "@/lib/billing";
 import { createClient } from "@/services/supabase/server";
+
+export const metadata: Metadata = {
+  title: "Billing",
+  description: `Purchase or redeem research credits for ${APP_NAME}.`,
+};
 
 type PaywallPageProps = {
   searchParams: Promise<{ checkout?: string }>;

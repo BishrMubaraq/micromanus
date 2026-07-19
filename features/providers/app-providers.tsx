@@ -2,6 +2,7 @@
 
 import { ThemeProvider } from "next-themes";
 
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CommandMenuProvider } from "@/features/providers/command-menu-provider";
 
@@ -19,7 +20,10 @@ export function AppProviders({ children }: AppProvidersProps) {
       disableTransitionOnChange
     >
       <TooltipProvider delayDuration={200}>
-        <CommandMenuProvider>{children}</CommandMenuProvider>
+        <CommandMenuProvider>
+          {children}
+          <Toaster />
+        </CommandMenuProvider>
       </TooltipProvider>
     </ThemeProvider>
   );

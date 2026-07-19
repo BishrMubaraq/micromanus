@@ -1,12 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import {
-  BarChart3,
-  CreditCard,
-  MessageSquare,
-  Settings,
-} from "lucide-react";
 
 import {
   CommandDialog,
@@ -15,33 +9,10 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
+  CommandShortcut,
 } from "@/components/ui/command";
 import { useCommandMenu } from "@/features/providers/command-menu-provider";
-import { ROUTES } from "@/lib/constants";
-
-const NAV_ITEMS = [
-  {
-    label: "New research",
-    href: ROUTES.chat,
-    icon: MessageSquare,
-  },
-  {
-    label: "Analytics",
-    href: ROUTES.analytics,
-    icon: BarChart3,
-  },
-  {
-    label: "Settings",
-    href: ROUTES.settings,
-    icon: Settings,
-  },
-  {
-    label: "Payments",
-    href: ROUTES.paywall,
-    icon: CreditCard,
-  },
-] as const;
+import { APP_NAV } from "@/lib/navigation";
 
 export function CommandMenu() {
   const router = useRouter();
@@ -49,11 +20,11 @@ export function CommandMenu() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search commands…" />
+      <CommandInput placeholder="Jump to a page or action…" />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Navigate">
-          {NAV_ITEMS.map((item) => (
+          {APP_NAV.map((item) => (
             <CommandItem
               key={item.href}
               value={item.label}
@@ -64,14 +35,11 @@ export function CommandMenu() {
             >
               <item.icon className="size-4 text-muted-foreground" />
               {item.label}
+              {item.shortcut ? (
+                <CommandShortcut>{item.shortcut}</CommandShortcut>
+              ) : null}
             </CommandItem>
           ))}
-        </CommandGroup>
-        <CommandSeparator />
-        <CommandGroup heading="Coming soon">
-          <CommandItem disabled value="start-deep-research">
-            Start deep research
-          </CommandItem>
         </CommandGroup>
       </CommandList>
     </CommandDialog>

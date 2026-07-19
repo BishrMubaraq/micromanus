@@ -2,6 +2,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { createElement } from "react";
 
 import { ResearchReportDocument } from "@/features/reports/research-report-document";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { getReport } from "@/services/chats";
 import { createClient } from "@/services/supabase/server";
 
@@ -19,6 +20,12 @@ export async function GET(_req: Request, context: RouteContext) {
   if (!user) {
     return new Response("Unauthorized", { status: 401 });
   }
+
+  const limited = enforceRateLimit({
+    key: `pdf:${user.id}`,
+    ...RATE_LIMITS.pdf,
+  });
+  if (limited) return limited;
 
   const report = await getReport(id, user.id);
   if (!report) {

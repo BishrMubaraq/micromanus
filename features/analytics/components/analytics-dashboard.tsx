@@ -8,31 +8,23 @@ import {
   formatUsd,
 } from "@/features/analytics/pricing";
 import { AnalyticsEmpty } from "@/features/analytics/components/analytics-empty";
+import { PROVIDER_LABELS } from "@/features/providers";
 import type { AnalyticsDashboard } from "@/services/analytics";
+import { fadeUp, usePrefersReducedMotion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-
-const PROVIDER_LABEL: Record<string, string> = {
-  openai: "OpenAI",
-  anthropic: "Anthropic",
-  kimi: "Kimi",
-};
 
 type AnalyticsDashboardProps = {
   data: AnalyticsDashboard;
 };
 
 export function AnalyticsDashboardView({ data }: AnalyticsDashboardProps) {
+  const reduced = usePrefersReducedMotion();
   const hasActivity = data.rows.length > 0 || data.totalChats > 0;
 
   return (
     <div className="overflow-y-auto">
       <div className="mx-auto max-w-6xl px-6 py-8 md:px-8 md:py-10">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="mb-8"
-        >
+        <motion.div {...fadeUp(reduced)} className="mb-8">
           <h1 className="text-xl font-medium tracking-tight">Analytics</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Credits, spend, and research usage across your workspace.
@@ -40,9 +32,7 @@ export function AnalyticsDashboardView({ data }: AnalyticsDashboardProps) {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.05 }}
+          {...fadeUp(reduced, 0.05)}
           className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
         >
           <StatCard
@@ -60,12 +50,7 @@ export function AnalyticsDashboardView({ data }: AnalyticsDashboardProps) {
           />
         </motion.div>
 
-        <motion.section
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.12 }}
-          className="mt-8"
-        >
+        <motion.section {...fadeUp(reduced, 0.12)} className="mt-8">
           <div className="mb-3 flex items-baseline justify-between gap-3">
             <h2 className="text-sm font-medium tracking-tight">Usage</h2>
             <p className="text-xs text-muted-foreground">
@@ -131,7 +116,9 @@ export function AnalyticsDashboardView({ data }: AnalyticsDashboardProps) {
                           )}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
-                          {PROVIDER_LABEL[row.provider] ?? row.provider}
+                          {PROVIDER_LABELS[
+                            row.provider as keyof typeof PROVIDER_LABELS
+                          ] ?? row.provider}
                         </td>
                         <td className="px-4 py-3">
                           <span className="font-mono text-[12px] text-foreground/85">

@@ -8,8 +8,11 @@ import {
   useMemo,
   useState,
 } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import { CommandMenu } from "@/components/shared/command-menu";
+import { isAuthenticatedRoute } from "@/lib/constants";
+import { APP_NAV } from "@/lib/navigation";
 
 type CommandMenuContextValue = {
   open: boolean;
@@ -24,6 +27,8 @@ export function CommandMenuProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
   const toggle = useCallback(() => {
@@ -32,15 +37,46 @@ export function CommandMenuProvider({
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const typing =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable;
+
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         toggle();
+        return;
+      }
+
+      if (event.key === "Escape" && open) {
+        event.preventDefault();
+        setOpen(false);
+        return;
+      }
+
+      if (
+        typing ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        !isAuthenticatedRoute(pathname)
+      ) {
+        return;
+      }
+
+      const match = APP_NAV.find(
+        (item) => item.shortcut?.toLowerCase() === event.key.toLowerCase(),
+      );
+      if (match) {
+        event.preventDefault();
+        router.push(match.href);
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggle]);
+  }, [open, pathname, router, toggle]);
 
   const value = useMemo(
     () => ({ open, setOpen, toggle }),

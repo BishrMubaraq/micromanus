@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AnalyticsDashboardView } from "@/features/analytics/components/analytics-dashboard";
 import { getSession } from "@/features/auth/get-session";
-import { ROUTES } from "@/lib/constants";
+import { APP_NAME, ROUTES } from "@/lib/constants";
 import { getAnalyticsDashboard } from "@/services/analytics";
+
+export const metadata: Metadata = {
+  title: "Analytics",
+  description: `Credits, spend, and research usage in ${APP_NAME}.`,
+};
 
 export default async function AnalyticsPage() {
   const session = await getSession();

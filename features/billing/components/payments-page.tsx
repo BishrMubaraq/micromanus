@@ -4,7 +4,9 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight, Check, LoaderCircle, Ticket } from "lucide-react";
+import { toast } from "sonner";
 
+import { BrandMark } from "@/components/shared/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -13,12 +15,14 @@ import {
   startCheckout,
   type CouponFormState,
 } from "@/features/billing/actions";
+import { CREDIT_PACK } from "@/features/pricing/plans";
 import {
   BILLING_CREDITS_PER_COUPON,
   BILLING_CREDITS_PER_PURCHASE,
   LAUNCH_COUPON_CODE,
 } from "@/lib/billing";
 import { APP_NAME } from "@/lib/constants";
+import { fadeUp, usePrefersReducedMotion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 const couponInitial: CouponFormState = {
@@ -61,6 +65,15 @@ export function PaymentsPage({
     couponInitial,
   );
   const [confirming, setConfirming] = useState(Boolean(checkoutSuccess));
+  const reduced = usePrefersReducedMotion();
+
+  useEffect(() => {
+    if (couponState.success) {
+      toast.success(`Coupon applied — +${BILLING_CREDITS_PER_COUPON} credits`);
+    } else if (couponState.error) {
+      toast.error(couponState.error);
+    }
+  }, [couponState.error, couponState.success]);
 
   useEffect(() => {
     if (!checkoutSuccess) return;
@@ -92,7 +105,10 @@ export function PaymentsPage({
       />
 
       <header className="relative z-10 flex h-14 items-center justify-between border-b border-border px-6">
-        <p className="text-sm font-semibold tracking-tight">{APP_NAME}</p>
+        <div className="flex items-center gap-2.5">
+          <BrandMark size="sm" />
+          <p className="text-sm font-semibold tracking-tight">{APP_NAME}</p>
+        </div>
         <div className="flex items-center gap-3">
           <span className="hidden text-xs text-muted-foreground sm:inline">
             {email}
@@ -103,13 +119,11 @@ export function PaymentsPage({
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto flex max-w-lg flex-col px-6 py-16 md:py-24">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="text-center"
-        >
+      <main
+        id="main-content"
+        className="relative z-10 mx-auto flex max-w-lg flex-col px-6 py-16 md:py-24"
+      >
+        <motion.div {...fadeUp(reduced)} className="text-center">
           <p className="text-[11px] font-medium tracking-[0.18em] text-muted-foreground uppercase">
             Billing
           </p>
@@ -117,8 +131,8 @@ export function PaymentsPage({
             Unlock research
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Redeem a coupon or purchase credits. Each research request uses 1
-            credit.
+            Redeem a coupon or purchase {CREDIT_PACK.name.toLowerCase()}. Each
+            research request uses 1 credit.
           </p>
           {creditsBalance > 0 ? (
             <p className="mt-4 text-sm text-foreground">
@@ -142,16 +156,16 @@ export function PaymentsPage({
         ) : null}
 
         <motion.section
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08, duration: 0.4 }}
+          {...fadeUp(reduced, 0.08)}
           className="mt-10 rounded-2xl border border-border bg-card/40 p-6"
         >
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-base font-medium tracking-tight">Payment</h2>
+              <h2 className="text-base font-medium tracking-tight">
+                {CREDIT_PACK.name}
+              </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {BILLING_CREDITS_PER_PURCHASE} credits via Lemon Squeezy
+                {CREDIT_PACK.description} Checkout via Lemon Squeezy.
               </p>
             </div>
             <div className="text-right">
@@ -186,8 +200,10 @@ export function PaymentsPage({
                 const result = await startCheckout();
                 if ("error" in result) {
                   setCheckoutError(result.error);
+                  toast.error(result.error);
                   return;
                 }
+                toast.message("Redirecting to checkout…");
                 window.location.assign(result.url);
               });
             }}
@@ -201,7 +217,9 @@ export function PaymentsPage({
             </p>
           ) : null}
           {checkoutError ? (
-            <p className="mt-3 text-xs text-destructive">{checkoutError}</p>
+            <p role="alert" className="mt-3 text-xs text-destructive">
+              {checkoutError}
+            </p>
           ) : null}
         </motion.section>
 
@@ -214,9 +232,7 @@ export function PaymentsPage({
         </div>
 
         <motion.section
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.14, duration: 0.4 }}
+          {...fadeUp(reduced, 0.14)}
           className="rounded-2xl border border-border bg-card/40 p-6"
         >
           <div className="flex items-center gap-2">

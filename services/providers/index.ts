@@ -1,17 +1,23 @@
 import { decryptSecret, encryptSecret } from "@/lib/crypto/secrets";
 import {
   getDefaultEndpoint,
-  getDefaultModel,
-  isKnownModel,
+  resolveModelId,
 } from "@/features/providers/catalog";
-import type {
-  ProviderId,
-  UserProviderConfig,
-  UserProviderPublic,
+import {
+  PROVIDER_IDS,
+  type ProviderId,
+  type UserProviderConfig,
+  type UserProviderPublic,
 } from "@/features/providers/types";
 import { createAdminClient } from "@/services/supabase/admin";
 import { createClient } from "@/services/supabase/server";
 import type { Json, UserProvider } from "@/types/database";
+
+function toSupportedProvider(value: string): ProviderId | null {
+  return (PROVIDER_IDS as readonly string[]).includes(value)
+    ? (value as ProviderId)
+    : null;
+}
 
 export async function getUserProviderPublic(
   userId: string,
@@ -19,8 +25,11 @@ export async function getUserProviderPublic(
   const row = await getUserProviderRow(userId);
   if (!row) return null;
 
+  const provider = toSupportedProvider(row.provider);
+  if (!provider) return null;
+
   return {
-    provider: row.provider,
+    provider,
     endpoint: row.endpoint,
     defaultModel: row.default_model,
     apiKeyLastFour: row.api_key_last_four,
@@ -34,6 +43,9 @@ export async function getUserProviderConfig(
   const row = await getUserProviderRow(userId);
   if (!row) return null;
 
+  const provider = toSupportedProvider(row.provider);
+  if (!provider) return null;
+
   const apiKey = decryptSecret({
     ciphertext: row.api_key_ciphertext,
     iv: row.api_key_iv,
@@ -41,7 +53,7 @@ export async function getUserProviderConfig(
   });
 
   return {
-    provider: row.provider,
+    provider,
     endpoint: row.endpoint,
     apiKey,
     defaultModel: row.default_model,
@@ -59,9 +71,7 @@ export async function upsertUserProvider(input: {
   const existing = await getUserProviderRow(input.userId);
 
   const endpoint = input.endpoint.trim() || getDefaultEndpoint(input.provider);
-  const defaultModel = isKnownModel(input.provider, input.defaultModel)
-    ? input.defaultModel
-    : getDefaultModel(input.provider);
+  const defaultModel = resolveModelId(input.provider, input.defaultModel);
 
   const apiKey = input.apiKey?.trim();
   if (!apiKey && !existing) {

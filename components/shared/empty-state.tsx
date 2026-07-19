@@ -25,8 +25,8 @@ export function EmptyState({
       )}
     >
       {Icon ? (
-        <div className="mb-5 flex size-12 items-center justify-center rounded-xl border border-border bg-card">
-          <Icon className="size-5 text-muted-foreground" />
+        <div className="mb-5 flex size-12 items-center justify-center rounded-xl border border-border bg-gradient-to-b from-card to-card/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <Icon className="size-5 text-muted-foreground" aria-hidden />
         </div>
       ) : null}
       <h2 className="text-lg font-medium tracking-tight text-foreground">

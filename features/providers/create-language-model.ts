@@ -4,6 +4,10 @@ import type { LanguageModel } from "ai";
 
 import type { ProviderId } from "@/features/providers/types";
 
+/**
+ * Build a language model for BYOK providers.
+ * OpenAI + Kimi use Chat Completions via `.chat()` — not the Responses API.
+ */
 export function createLanguageModel(options: {
   provider: ProviderId;
   endpoint: string;
@@ -15,28 +19,24 @@ export function createLanguageModel(options: {
   if (provider === "anthropic") {
     const anthropic = createAnthropic({
       apiKey,
-      baseURL: normalizeAnthropicBaseUrl(endpoint),
+      baseURL: normalizeTrailingSlash(endpoint),
     });
     return anthropic(model);
   }
 
-  // OpenAI + Kimi (+ any OpenAI-compatible endpoint)
   const openai = createOpenAI({
     apiKey,
     baseURL: normalizeOpenAIBaseUrl(endpoint),
   });
 
-  return openai(model);
+  return openai.chat(model);
 }
 
 function normalizeOpenAIBaseUrl(endpoint: string): string {
-  const trimmed = endpoint.replace(/\/+$/, "");
+  const trimmed = normalizeTrailingSlash(endpoint);
   return trimmed.endsWith("/v1") ? trimmed : `${trimmed}/v1`;
 }
 
-function normalizeAnthropicBaseUrl(endpoint: string): string {
-  const trimmed = endpoint.replace(/\/+$/, "");
-  // @ai-sdk/anthropic expects base without forcing /v1 inconsistently;
-  // keep user endpoint if provided, else SDK default.
-  return trimmed;
+function normalizeTrailingSlash(endpoint: string): string {
+  return endpoint.replace(/\/+$/, "");
 }

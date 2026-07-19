@@ -1,11 +1,19 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { KeyRound } from "lucide-react";
 
+import { EmptyState } from "@/components/shared/empty-state";
+import { Button } from "@/components/ui/button";
 import { ChatWorkspace } from "@/features/chat/components/chat-workspace";
 import { getSession } from "@/features/auth/get-session";
-import { Button } from "@/components/ui/button";
-import { ROUTES } from "@/lib/constants";
+import { APP_NAME, ROUTES } from "@/lib/constants";
 import { getUserProviderPublic } from "@/services/providers";
+
+export const metadata: Metadata = {
+  title: "Research",
+  description: `Start a new deep research session in ${APP_NAME}.`,
+};
 
 export default async function ChatPage() {
   const session = await getSession();
@@ -17,18 +25,17 @@ export default async function ChatPage() {
 
   if (!provider?.hasApiKey) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
-        <h1 className="text-xl font-medium tracking-tight">
-          Connect a model provider
-        </h1>
-        <p className="max-w-md text-sm text-muted-foreground">
-          MicroManus uses your own API key. Add OpenAI, Anthropic, or Kimi in
-          Settings to start researching.
-        </p>
-        <Button asChild>
-          <Link href={ROUTES.settings}>Open Settings</Link>
-        </Button>
-      </div>
+      <EmptyState
+        icon={KeyRound}
+        title="Connect a model provider"
+        description={`${APP_NAME} uses your own key. Connect OpenAI, Anthropic, or Kimi in Settings to start researching.`}
+        className="h-full"
+        action={
+          <Button asChild>
+            <Link href={ROUTES.settings}>Open Settings</Link>
+          </Button>
+        }
+      />
     );
   }
 

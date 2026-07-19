@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, Copy, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
@@ -19,9 +20,14 @@ export function MessageActions({
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(content);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      toast.success("Copied to clipboard");
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error("Couldn’t copy response");
+    }
   }
 
   return (
@@ -31,7 +37,9 @@ export function MessageActions({
         size="sm"
         variant="ghost"
         className="h-8 px-2 text-muted-foreground"
-        onClick={handleCopy}
+        onClick={() => {
+          void handleCopy();
+        }}
         disabled={!content}
       >
         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}

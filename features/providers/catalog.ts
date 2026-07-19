@@ -3,7 +3,7 @@ import type { ProviderId, ProviderModel } from "@/features/providers/types";
 export const PROVIDER_LABELS: Record<ProviderId, string> = {
   openai: "OpenAI",
   anthropic: "Anthropic",
-  kimi: "Kimi",
+  kimi: "Kimi (Moonshot)",
 };
 
 export const DEFAULT_ENDPOINTS: Record<ProviderId, string> = {
@@ -12,7 +12,6 @@ export const DEFAULT_ENDPOINTS: Record<ProviderId, string> = {
   kimi: "https://api.moonshot.ai/v1",
 };
 
-/** Curated latest models per provider — dropdown updates from this catalog. */
 export const PROVIDER_MODELS: Record<ProviderId, ProviderModel[]> = {
   openai: [
     { id: "gpt-4.1", label: "GPT-4.1" },
@@ -39,6 +38,9 @@ export const PROVIDER_MODELS: Record<ProviderId, ProviderModel[]> = {
   ],
 };
 
+/** Providers that use OpenAI Chat Completions (not Responses API). */
+export const OPENAI_COMPATIBLE_PROVIDERS: ProviderId[] = ["openai", "kimi"];
+
 export function getModelsForProvider(provider: ProviderId): ProviderModel[] {
   return PROVIDER_MODELS[provider];
 }
@@ -52,5 +54,13 @@ export function getDefaultEndpoint(provider: ProviderId): string {
 }
 
 export function isKnownModel(provider: ProviderId, model: string): boolean {
-  return PROVIDER_MODELS[provider].some((item) => item.id === model);
+  const trimmed = model.trim();
+  if (!trimmed) return false;
+  return PROVIDER_MODELS[provider].some((item) => item.id === trimmed);
+}
+
+export function resolveModelId(provider: ProviderId, model: string): string {
+  const trimmed = model.trim();
+  if (isKnownModel(provider, trimmed)) return trimmed;
+  return getDefaultModel(provider);
 }

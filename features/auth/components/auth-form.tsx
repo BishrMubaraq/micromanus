@@ -32,9 +32,16 @@ export function AuthForm({ className }: AuthFormProps) {
 
   return (
     <div className={cn("w-full space-y-5", className)}>
-      <div className="flex rounded-md border border-border p-1">
+      <div
+        role="tablist"
+        aria-label="Authentication mode"
+        className="flex rounded-md border border-border p-1"
+      >
         <button
           type="button"
+          role="tab"
+          aria-selected={mode === "sign_in"}
+          id="auth-tab-sign-in"
           onClick={() => setMode("sign_in")}
           className={cn(
             "flex-1 rounded-sm px-3 py-1.5 text-sm transition-colors",
@@ -47,6 +54,9 @@ export function AuthForm({ className }: AuthFormProps) {
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={mode === "sign_up"}
+          id="auth-tab-sign-up"
           onClick={() => setMode("sign_up")}
           className={cn(
             "flex-1 rounded-sm px-3 py-1.5 text-sm transition-colors",
@@ -59,7 +69,13 @@ export function AuthForm({ className }: AuthFormProps) {
         </button>
       </div>
 
-      <form action={formAction} className="space-y-4">
+      <form
+        action={formAction}
+        className="space-y-4"
+        aria-labelledby={
+          mode === "sign_in" ? "auth-tab-sign-in" : "auth-tab-sign-up"
+        }
+      >
         <input type="hidden" name="mode" value={mode} />
 
         <div className="space-y-2">
@@ -92,13 +108,22 @@ export function AuthForm({ className }: AuthFormProps) {
         </div>
 
         {state.error ? (
-          <p className="text-sm text-destructive">{state.error}</p>
+          <p role="alert" className="text-sm text-destructive">
+            {state.error}
+          </p>
         ) : null}
         {state.message ? (
-          <p className="text-sm text-muted-foreground">{state.message}</p>
+          <p role="status" className="text-sm text-muted-foreground">
+            {state.message}
+          </p>
         ) : null}
 
-        <Button type="submit" size="lg" className="h-11 w-full" disabled={pending}>
+        <Button
+          type="submit"
+          size="lg"
+          className="h-11 w-full"
+          disabled={pending}
+        >
           {pending
             ? mode === "sign_in"
               ? "Signing in…"
@@ -118,9 +143,9 @@ export function AuthForm({ className }: AuthFormProps) {
       </div>
 
       <OAuthButtons disabled />
-      <p className="text-xs text-muted-foreground">
-        Email/password is enabled for interim testing. Google and GitHub OAuth
-        stay wired and will be turned on next.
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        Email sign-in is available now. Google and GitHub OAuth stay wired for
+        the next release.
       </p>
     </div>
   );
