@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
+  confirmCheckoutAction,
   redeemCouponAction,
   startCheckout,
   type CouponFormState,
@@ -82,22 +83,51 @@ export function PaymentsPage({
   useEffect(() => {
     if (!checkoutSuccess) return;
 
+    let cancelled = false;
     let attempts = 0;
-    const timer = window.setInterval(() => {
-      attempts += 1;
-      router.refresh();
-      if (attempts >= 8) {
-        window.clearInterval(timer);
-        setConfirming(false);
-      }
-    }, 2000);
+    let timer: number | undefined;
 
-    return () => window.clearInterval(timer);
+    async function reconcile() {
+      const result = await confirmCheckoutAction();
+      if (cancelled) return;
+
+      if (result.ok && result.creditsAdded > 0) {
+        toast.success(`+${result.creditsAdded} credits added`);
+        router.refresh();
+        router.replace(ROUTES.chat);
+        return;
+      }
+
+      if (result.ok === false) {
+        console.error(result.error);
+      }
+
+      router.refresh();
+      attempts += 1;
+      if (attempts >= 6) {
+        setConfirming(false);
+        toast.message(
+          "Payment received. Refreshing credits — if the balance stays at 0, configure the Lemon test-mode webhook.",
+        );
+        return;
+      }
+
+      timer = window.setTimeout(() => {
+        void reconcile();
+      }, 2500);
+    }
+
+    void reconcile();
+
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
   }, [checkoutSuccess, router]);
 
   useEffect(() => {
     if (creditsBalance > 0 && checkoutSuccess) {
-      router.replace("/chat");
+      router.replace(ROUTES.chat);
     }
   }, [creditsBalance, checkoutSuccess, router]);
 

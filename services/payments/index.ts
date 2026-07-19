@@ -1,6 +1,9 @@
 import type { Payment } from "@/types/database";
 
+import { fulfillLemonOrder } from "./fulfill-order";
 import { createLemonCheckout } from "./lemon-squeezy";
+
+export { fulfillLemonOrder };
 
 export type CreateCheckoutInput = {
   userId: string;

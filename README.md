@@ -61,6 +61,8 @@ Requires the [Vercel CLI](https://vercel.com/docs/cli) (`vercel login` once). Se
    - Set `LEMON_SQUEEZY_*` env vars.
    - Webhook URL: `{NEXT_PUBLIC_APP_URL}/api/webhooks/lemon-squeezy`  
      Event: `order_created`. Copy the signing secret.
+   - **Test mode:** create a separate webhook while Test mode is ON (test signing secret differs from live). Apply migration `00008` so `fulfill_lemon_order` exists.
+   - After checkout, the paywall also reconciles recent paid orders if the webhook is delayed.
 
 5. **Run**
    ```bash

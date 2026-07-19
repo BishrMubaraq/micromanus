@@ -8,6 +8,8 @@ import { getAppUrl } from "@/lib/app-url";
 import { ROUTES } from "@/lib/constants";
 import { isLemonConfigured } from "@/lib/billing";
 import { createPaymentService } from "@/services/payments";
+import { fulfillLemonOrder } from "@/services/payments/fulfill-order";
+import { listRecentLemonOrdersForEmail } from "@/services/payments/lemon-squeezy";
 import { createClient } from "@/services/supabase/server";
 
 export type CouponFormState = {
@@ -18,6 +20,10 @@ export type CouponFormState = {
 export type CheckoutActionResult =
   | { url: string }
   | { error: string };
+
+export type ConfirmCheckoutResult =
+  | { ok: true; creditsAdded: number; balance?: number }
+  | { ok: false; error: string };
 
 export async function startCheckout(): Promise<CheckoutActionResult> {
   const session = await getSession();
@@ -43,6 +49,70 @@ export async function startCheckout(): Promise<CheckoutActionResult> {
     return {
       error:
         error instanceof Error ? error.message : "Unable to start checkout",
+    };
+  }
+}
+
+/**
+ * After Lemon redirects back with ?checkout=success, reconcile recent paid
+ * orders for this user. Covers missing/misconfigured webhooks (common in test mode).
+ */
+export async function confirmCheckoutAction(): Promise<ConfirmCheckoutResult> {
+  const session = await getSession();
+  if (!session) {
+    return { ok: false, error: "Unauthorized" };
+  }
+
+  if (!isLemonConfigured()) {
+    return { ok: false, error: "Billing is not configured" };
+  }
+
+  const email = session.user.email;
+  if (!email) {
+    return { ok: false, error: "Account email is required to confirm payment" };
+  }
+
+  try {
+    const orders = await listRecentLemonOrdersForEmail(email, 8);
+    const paid = orders.filter(
+      (order) => order.status === "paid" || order.status === "pending",
+    );
+
+    let creditsAdded = 0;
+    let balance: number | undefined;
+
+    for (const order of paid) {
+      const result = await fulfillLemonOrder({
+        orderId: order.id,
+        userId: session.user.id,
+        amountCents: order.total,
+        currency: order.currency,
+        metadata: {
+          source: "checkout_reconcile",
+          email,
+        },
+      });
+      if (!result.duplicate) {
+        creditsAdded += result.credits;
+      }
+      if (typeof result.balance === "number") {
+        balance = result.balance;
+      }
+    }
+
+    revalidatePath(ROUTES.paywall);
+    revalidatePath(ROUTES.chat);
+    revalidatePath(ROUTES.settings);
+
+    return { ok: true, creditsAdded, balance };
+  } catch (error) {
+    console.error("Checkout confirm failed", error);
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to confirm payment yet",
     };
   }
 }
