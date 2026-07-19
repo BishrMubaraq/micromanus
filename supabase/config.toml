@@ -1,0 +1,7 @@
+# Minimal Supabase CLI config for local migrations.
+# Link a remote project with `supabase link` when ready.
+
+project_id = "micromanus"
+
+[db]
+major_version = 15
