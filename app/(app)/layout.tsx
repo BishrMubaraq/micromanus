@@ -30,7 +30,7 @@ export default async function AppLayout({
       chats={chats}
       user={{
         email: session.user.email,
-        fullName: session.profile?.full_name ?? null,
+        fullName: session.displayName,
         avatarUrl: session.profile?.avatar_url ?? null,
       }}
     >

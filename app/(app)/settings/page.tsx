@@ -22,7 +22,7 @@ export default async function SettingsPage() {
   return (
     <SettingsPanel
       email={session.user.email}
-      fullName={session.profile?.full_name ?? null}
+      fullName={session.displayName}
       creditsBalance={session.profile?.credits_balance ?? 0}
       provider={provider}
     />

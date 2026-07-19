@@ -22,7 +22,7 @@ export function AnalyticsDashboardView({ data }: AnalyticsDashboardProps) {
   const hasActivity = data.rows.length > 0 || data.totalChats > 0;
 
   return (
-    <div className="overflow-y-auto">
+    <div className="h-full min-h-0 overflow-y-auto">
       <div className="mx-auto max-w-6xl px-6 py-8 md:px-8 md:py-10">
         <motion.div {...fadeUp(reduced)} className="mb-8">
           <h1 className="text-xl font-medium tracking-tight">Analytics</h1>
