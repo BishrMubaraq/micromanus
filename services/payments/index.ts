@@ -1,60 +1,36 @@
-import type { Payment, PaymentStatus } from "@/types/database";
+import type { Payment } from "@/types/database";
 
-export type CheckoutPlanId = "starter" | "pro" | "scale";
+import { createLemonCheckout } from "./lemon-squeezy";
 
-export type CreateCheckoutSessionInput = {
+export type CreateCheckoutInput = {
   userId: string;
-  planId: CheckoutPlanId;
-  successUrl: string;
-  cancelUrl: string;
+  email?: string | null;
+  redirectUrl: string;
 };
 
-export type CreateCheckoutSessionResult = {
+export type CreateCheckoutResult = {
   url: string;
   sessionId: string;
 };
 
-/**
- * Payment provider contract. Stripe Checkout will implement this.
- * Do not call from UI until Stripe keys and webhook are configured.
- */
 export interface PaymentService {
-  createCheckoutSession(
-    input: CreateCheckoutSessionInput,
-  ): Promise<CreateCheckoutSessionResult>;
-  getPaymentByProviderId(
-    providerPaymentId: string,
-  ): Promise<Payment | null>;
+  createCheckout(input: CreateCheckoutInput): Promise<CreateCheckoutResult>;
 }
 
-export class UnconfiguredPaymentService implements PaymentService {
-  async createCheckoutSession(
-    input: CreateCheckoutSessionInput,
-  ): Promise<CreateCheckoutSessionResult> {
-    void input;
-    // TODO: Wire Stripe Checkout Session creation when STRIPE_SECRET_KEY is set.
-    throw new Error(
-      "PaymentService is not configured. Set Stripe credentials to enable checkout.",
-    );
-  }
-
-  async getPaymentByProviderId(
-    providerPaymentId: string,
-  ): Promise<Payment | null> {
-    void providerPaymentId;
-    return null;
+export class LemonSqueezyPaymentService implements PaymentService {
+  async createCheckout(
+    input: CreateCheckoutInput,
+  ): Promise<CreateCheckoutResult> {
+    const checkout = await createLemonCheckout(input);
+    return {
+      url: checkout.url,
+      sessionId: checkout.checkoutId,
+    };
   }
 }
 
 export function createPaymentService(): PaymentService {
-  return new UnconfiguredPaymentService();
+  return new LemonSqueezyPaymentService();
 }
 
-export type PaymentRecordInput = {
-  userId: string;
-  providerPaymentId: string;
-  amountCents: number;
-  currency: string;
-  status: PaymentStatus;
-  creditsGranted: number;
-};
+export type { Payment };

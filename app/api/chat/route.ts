@@ -9,6 +9,7 @@ import { createResearchStream } from "@/features/agent/research-agent";
 import type { ResearchUIMessage } from "@/features/agent/message-types";
 import type { GeneratedReportDraft } from "@/features/agent/tools";
 import { createInitialTimeline } from "@/features/agent/timeline";
+import { createLLMProvider } from "@/features/providers";
 import { RESEARCH_CREDIT_COST } from "@/lib/env";
 import { createAdminClient } from "@/services/supabase/admin";
 import { grantCreditsWithAdmin } from "@/services/credits";
@@ -24,6 +25,10 @@ import {
   titleFromPrompt,
   touchChat,
 } from "@/services/chats";
+import {
+  getUserProviderConfig,
+  persistUsageLog,
+} from "@/services/providers";
 
 export const maxDuration = 60;
 
@@ -61,9 +66,26 @@ export async function POST(req: Request) {
     return new Response("Insufficient credits", { status: 402 });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
-    return new Response("Missing OPENAI_API_KEY", { status: 500 });
+  let providerConfig;
+  try {
+    providerConfig = await getUserProviderConfig(user.id);
+  } catch (error) {
+    console.error("Provider config error", error);
+    return new Response(
+      "Provider encryption is not configured. Set PROVIDER_ENCRYPTION_KEY.",
+      { status: 500 },
+    );
   }
+
+  if (!providerConfig?.apiKey) {
+    return new Response(
+      "Configure your model provider and API key in Settings before researching.",
+      { status: 400 },
+    );
+  }
+
+  const llm = createLLMProvider(providerConfig);
+  const model = providerConfig.defaultModel;
 
   const promptText = textFromUIMessage(latestUser);
   let chatId = body.chatId;
@@ -111,7 +133,7 @@ export async function POST(req: Request) {
     userId: user.id,
     delta: -RESEARCH_CREDIT_COST,
     reason: "usage",
-    metadata: { chatId, model: process.env.OPENAI_MODEL ?? "gpt-4o" },
+    metadata: { chatId, model, provider: providerConfig.provider },
   });
 
   const stream = createUIMessageStream<ResearchUIMessage>({
@@ -131,6 +153,8 @@ export async function POST(req: Request) {
       });
 
       const result = await createResearchStream({
+        provider: llm,
+        model,
         messages,
         abortSignal: req.signal,
         onTimeline: (timeline) => {
@@ -149,11 +173,15 @@ export async function POST(req: Request) {
         }),
       );
 
-      const [text, steps, usage] = await Promise.all([
+      const [text, steps, rawUsage, totalUsage] = await Promise.all([
         result.text,
         result.steps,
         result.usage,
+        result.totalUsage,
       ]);
+
+      const usage = llm.usage(totalUsage ?? rawUsage);
+      void llm.toolCalls({ steps });
 
       let reportId: string | null = null;
       let reportTitle: string | null = null;
@@ -223,13 +251,16 @@ export async function POST(req: Request) {
 
       await touchChat(chatId!, user.id);
 
-      await admin.from("usage_logs").insert({
-        user_id: user.id,
-        chat_id: chatId,
-        model: process.env.OPENAI_MODEL ?? "gpt-4o",
-        input_tokens: usage.inputTokens ?? 0,
-        output_tokens: usage.outputTokens ?? 0,
-        credits_spent: RESEARCH_CREDIT_COST,
+      await persistUsageLog({
+        userId: user.id,
+        chatId: chatId!,
+        provider: providerConfig.provider,
+        model,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        cacheTokens: usage.cacheTokens,
+        totalTokens: usage.totalTokens,
+        creditsSpent: RESEARCH_CREDIT_COST,
         metadata: { isNewChat, reportId },
       });
     },

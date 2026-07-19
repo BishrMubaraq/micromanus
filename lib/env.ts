@@ -6,6 +6,5 @@ export function requireEnv(name: string): string {
   return value;
 }
 
-export const RESEARCH_CREDIT_COST = 1;
+export { RESEARCH_CREDIT_COST } from "@/lib/billing";
 export const WELCOME_CREDITS = 100;
-export const RESEARCH_MODEL = process.env.OPENAI_MODEL ?? "gpt-4o";

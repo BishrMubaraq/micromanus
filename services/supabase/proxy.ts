@@ -6,7 +6,8 @@ import type { Database } from "@/types/database";
 
 import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseConfig } from "./env";
 
-function isProtectedPath(pathname: string): boolean {
+/** App routes that require auth + credits > 0 */
+function isCreditGatedPath(pathname: string): boolean {
   return (
     pathname.startsWith(ROUTES.chat) ||
     pathname.startsWith(ROUTES.analytics) ||
@@ -14,15 +15,35 @@ function isProtectedPath(pathname: string): boolean {
   );
 }
 
+/** Routes that require a session (credits optional) */
 function isAuthenticatedPath(pathname: string): boolean {
-  return isProtectedPath(pathname) || pathname.startsWith(ROUTES.paywall);
+  return isCreditGatedPath(pathname) || pathname.startsWith(ROUTES.paywall);
 }
 
+function copyCookies(from: NextResponse, to: NextResponse) {
+  from.cookies.getAll().forEach((cookie) => {
+    to.cookies.set(cookie.name, cookie.value);
+  });
+}
+
+/**
+ * Next.js 16 proxy (middleware replacement).
+ * - Refreshes Supabase session
+ * - Unauthenticated users → landing
+ * - Authenticated users with 0 credits → paywall (for gated routes)
+ * - Webhooks / public APIs pass through
+ */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+  const pathname = request.nextUrl.pathname;
+
+  // Never gate Lemon webhooks or static auth callback logic here beyond cookies.
+  if (pathname.startsWith("/api/webhooks")) {
+    return supabaseResponse;
+  }
 
   if (!hasSupabaseConfig()) {
-    if (isAuthenticatedPath(request.nextUrl.pathname)) {
+    if (isAuthenticatedPath(pathname)) {
       const url = request.nextUrl.clone();
       url.pathname = ROUTES.home;
       return NextResponse.redirect(url);
@@ -56,16 +77,13 @@ export async function updateSession(request: NextRequest) {
 
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub as string | undefined;
-  const pathname = request.nextUrl.pathname;
 
   if (!userId) {
     if (isAuthenticatedPath(pathname)) {
       const url = request.nextUrl.clone();
       url.pathname = ROUTES.home;
       const redirectResponse = NextResponse.redirect(url);
-      supabaseResponse.cookies.getAll().forEach((cookie) => {
-        redirectResponse.cookies.set(cookie.name, cookie.value);
-      });
+      copyCookies(supabaseResponse, redirectResponse);
       return redirectResponse;
     }
     return supabaseResponse;
@@ -79,23 +97,11 @@ export async function updateSession(request: NextRequest) {
 
   const credits = profile?.credits_balance ?? 0;
 
-  if (credits <= 0 && isProtectedPath(pathname)) {
+  if (credits <= 0 && isCreditGatedPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = ROUTES.paywall;
     const redirectResponse = NextResponse.redirect(url);
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie.name, cookie.value);
-    });
-    return redirectResponse;
-  }
-
-  if (credits > 0 && pathname.startsWith(ROUTES.paywall)) {
-    const url = request.nextUrl.clone();
-    url.pathname = ROUTES.chat;
-    const redirectResponse = NextResponse.redirect(url);
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie.name, cookie.value);
-    });
+    copyCookies(supabaseResponse, redirectResponse);
     return redirectResponse;
   }
 

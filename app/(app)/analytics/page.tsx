@@ -25,13 +25,13 @@ export default async function AnalyticsPage() {
       {summary.requestCount === 0 ? (
         <AnalyticsEmpty />
       ) : (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Metric label="Research runs" value={summary.requestCount} />
           <Metric label="Credits spent" value={summary.totalCreditsSpent} />
-          <Metric
-            label="Tokens"
-            value={summary.totalInputTokens + summary.totalOutputTokens}
-          />
+          <Metric label="Input tokens" value={summary.totalInputTokens} />
+          <Metric label="Output tokens" value={summary.totalOutputTokens} />
+          <Metric label="Cache tokens" value={summary.totalCacheTokens} />
+          <Metric label="Total tokens" value={summary.totalTokens} />
         </div>
       )}
     </div>

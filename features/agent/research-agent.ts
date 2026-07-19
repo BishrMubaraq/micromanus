@@ -1,12 +1,9 @@
 import {
   convertToModelMessages,
   stepCountIs,
-  streamText,
   type UIMessage,
 } from "ai";
-import { openai } from "@ai-sdk/openai";
 
-import { RESEARCH_MODEL } from "@/lib/env";
 import { RESEARCH_SYSTEM_PROMPT } from "@/features/agent/prompts";
 import { researchTools } from "@/features/agent/tools";
 import type {
@@ -18,10 +15,13 @@ import {
   completeTimeline,
   createInitialTimeline,
 } from "@/features/agent/timeline";
+import type { LLMProvider } from "@/features/providers";
 
 export type TimelineListener = (timeline: ResearchTimelineState) => void;
 
 export async function createResearchStream(options: {
+  provider: LLMProvider;
+  model: string;
   messages: UIMessage[];
   abortSignal?: AbortSignal;
   onTimeline?: TimelineListener;
@@ -36,8 +36,8 @@ export async function createResearchStream(options: {
 
   const modelMessages = await convertToModelMessages(options.messages);
 
-  return streamText({
-    model: openai(RESEARCH_MODEL),
+  return options.provider.stream({
+    model: options.model,
     system: RESEARCH_SYSTEM_PROMPT,
     messages: modelMessages,
     tools: researchTools,

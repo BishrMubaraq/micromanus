@@ -37,7 +37,7 @@ const NAV_ITEMS = [
     icon: Settings,
   },
   {
-    label: "Credits & billing",
+    label: "Payments",
     href: ROUTES.paywall,
     icon: CreditCard,
   },

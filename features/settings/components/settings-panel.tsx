@@ -1,5 +1,7 @@
 import { signOut } from "@/features/auth/actions";
 import { grantTestCredits } from "@/features/auth/grant-test-credits";
+import { ProviderSettingsForm } from "@/features/settings/components/provider-settings-form";
+import type { UserProviderPublic } from "@/features/providers";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,21 +17,36 @@ type SettingsPanelProps = {
   email: string | null;
   fullName: string | null;
   creditsBalance: number;
+  provider: UserProviderPublic | null;
 };
 
 export function SettingsPanel({
   email,
   fullName,
   creditsBalance,
+  provider,
 }: SettingsPanelProps) {
   return (
     <div className="mx-auto max-w-2xl space-y-6 overflow-y-auto p-6 md:p-8">
       <div>
         <h1 className="text-xl font-medium tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage your account and workspace preferences.
+          Manage your account, model provider, and workspace preferences.
         </p>
       </div>
+
+      <Card className="border-border bg-card/50 shadow-none">
+        <CardHeader>
+          <CardTitle className="text-base font-medium">Model provider</CardTitle>
+          <CardDescription>
+            Bring your own key. MicroManus never ships or exposes provider
+            secrets — keys are encrypted at rest.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProviderSettingsForm initial={provider} />
+        </CardContent>
+      </Card>
 
       <Card className="border-border bg-card/50 shadow-none">
         <CardHeader>

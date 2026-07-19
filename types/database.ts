@@ -20,10 +20,64 @@ export type CreditReason =
   | "usage"
   | "refund"
   | "adjustment";
+export type LlmProvider = "openai" | "anthropic" | "kimi";
 
 export type Database = {
   public: {
     Tables: {
+      user_providers: {
+        Row: {
+          id: string;
+          user_id: string;
+          provider: LlmProvider;
+          endpoint: string;
+          api_key_ciphertext: string;
+          api_key_iv: string;
+          api_key_tag: string;
+          api_key_last_four: string;
+          default_model: string;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          provider: LlmProvider;
+          endpoint: string;
+          api_key_ciphertext: string;
+          api_key_iv: string;
+          api_key_tag: string;
+          api_key_last_four?: string;
+          default_model: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          provider?: LlmProvider;
+          endpoint?: string;
+          api_key_ciphertext?: string;
+          api_key_iv?: string;
+          api_key_tag?: string;
+          api_key_last_four?: string;
+          default_model?: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_providers_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           id: string;
@@ -279,8 +333,11 @@ export type Database = {
           user_id: string;
           chat_id: string | null;
           model: string;
+          provider: string | null;
           input_tokens: number;
           output_tokens: number;
+          cache_tokens: number;
+          total_tokens: number;
           credits_spent: number;
           cost_cents: number | null;
           metadata: Json;
@@ -291,8 +348,11 @@ export type Database = {
           user_id: string;
           chat_id?: string | null;
           model: string;
+          provider?: string | null;
           input_tokens?: number;
           output_tokens?: number;
+          cache_tokens?: number;
+          total_tokens?: number;
           credits_spent?: number;
           cost_cents?: number | null;
           metadata?: Json;
@@ -303,8 +363,11 @@ export type Database = {
           user_id?: string;
           chat_id?: string | null;
           model?: string;
+          provider?: string | null;
           input_tokens?: number;
           output_tokens?: number;
+          cache_tokens?: number;
+          total_tokens?: number;
           credits_spent?: number;
           cost_cents?: number | null;
           metadata?: Json;
@@ -388,12 +451,20 @@ export type Database = {
         };
         Returns: number;
       };
+      redeem_coupon: {
+        Args: {
+          p_user_id: string;
+          p_code: string;
+        };
+        Returns: number;
+      };
     };
     Enums: {
       chat_status: ChatStatus;
       message_role: MessageRole;
       payment_status: PaymentStatus;
       credit_reason: CreditReason;
+      llm_provider: LlmProvider;
     };
     CompositeTypes: Record<string, never>;
   };
@@ -407,3 +478,5 @@ export type Credit = Database["public"]["Tables"]["credits"]["Row"];
 export type UsageLog = Database["public"]["Tables"]["usage_logs"]["Row"];
 export type Report = Database["public"]["Tables"]["reports"]["Row"];
 export type ApiKey = Database["public"]["Tables"]["api_keys"]["Row"];
+export type UserProvider =
+  Database["public"]["Tables"]["user_providers"]["Row"];

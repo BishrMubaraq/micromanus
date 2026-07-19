@@ -124,7 +124,7 @@ export function Header({
           <DropdownMenuItem asChild>
             <Link href={ROUTES.paywall}>
               <CreditCard className="size-4" />
-              Billing
+              Payments
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
